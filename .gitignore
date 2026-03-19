@@ -47,3 +47,16 @@ temp/
 
 # Spring Boot
 spring-boot-devtools.properties
+
+# pnpm store
+.pnpm-store/
+
+# Environment files
+.env.local
+.env.*.local
+
+# Claude
+.claude/
+
+# Build artifacts
+*.ts.timestamp-*.mjs
