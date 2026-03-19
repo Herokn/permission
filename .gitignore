@@ -1,0 +1,49 @@
+.idea/
+node_modules/
+target/
+*.iml
+*.log
+.DS_Store
+*.jar
+*.class
+.env
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build
+dist/
+build/
+out/
+
+# Dependencies
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Logs
+logs/
+*.log.*
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+
+# Spring Boot
+spring-boot-devtools.properties

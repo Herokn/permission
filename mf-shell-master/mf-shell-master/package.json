@@ -1,0 +1,71 @@
+{
+  "name": "@wb/mf-shell",
+  "private": false,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "NODE_ENV=development turbo run dev",
+    "start:all": "NODE_ENV=development turbo run dev",
+    "start:fe": "turbo run dev --filter=@wb/mf-shell-fe -- --mode development",
+    "start:fe:root": "turbo run dev --filter=@wb/mf-shell-fe -- --mode site",
+    "start:server": "NODE_ENV=development turbo run dev --filter=@wb/mf-shell-server",
+    "start:test": "NODE_ENV=test turbo run dev -- --mode test",
+    "start:test:all": "NODE_ENV=test turbo run dev -- --mode test",
+    "start:test:fe": "turbo run dev --filter=@wb/mf-shell-fe -- --mode test",
+    "start:test:server": "NODE_ENV=test turbo run dev --filter=@wb/mf-shell-server",
+    "start:mock:fe": "turbo run dev --filter=@wb/mf-shell-fe -- --mode mock",
+    "start:prod": "NODE_ENV=production turbo run start --filter=@wb/mf-shell-server",
+    "start:prod:server": "NODE_ENV=production turbo run start --filter=@wb/mf-shell-server",
+    "start:prod:fe": "turbo run preview --filter=@wb/mf-shell-fe",
+    "start:prod:all": "NODE_ENV=production concurrently -n server,fe -c \"yellow.bold\",\"green.bold\" \"pnpm --dir server start\" \"pnpm --dir fe preview\"",
+    "build": "MODE=development NODE_ENV=development turbo run build --filter=@wb/mf-shell-server --filter=@wb/mf-shell-fe && node scripts/pack-for-deploy.cjs mode=development",
+    "build:dev": "pnpm run build",
+    "build:dev:server": "NODE_ENV=development turbo run build --filter=@wb/mf-shell-server && node scripts/pack-for-deploy.cjs mode=development",
+    "build:dev:fe": "MODE=development turbo run build --filter=@wb/mf-shell-fe",
+    "build:test": "MODE=test NODE_ENV=test turbo run build --filter=@wb/mf-shell-server --filter=@wb/mf-shell-fe --env-mode=loose && node scripts/pack-for-deploy.cjs mode=test",
+    "build:test:server": "NODE_ENV=test turbo run build --filter=@wb/mf-shell-server --env-mode=loose && node scripts/pack-for-deploy.cjs mode=test",
+    "build:test:fe": "cd fe && MODE=test NODE_ENV=test pnpm build",
+    "build:prod": "MODE=production NODE_ENV=production turbo run build --filter=@wb/mf-shell-server --filter=@wb/mf-shell-fe && node scripts/pack-for-deploy.cjs mode=production",
+    "build:prod:server": "NODE_ENV=production turbo run build --filter=@wb/mf-shell-server && node scripts/pack-for-deploy.cjs mode=production",
+    "build:prod:fe": "MODE=production turbo run build --filter=@wb/mf-shell-fe",
+    "deploy:test": "pm2 start ecosystem.config.cjs --env test",
+    "deploy:prod": "pm2 start ecosystem.config.cjs --env production",
+    "typecheck": "turbo run typecheck",
+    "release": "node scripts/update-version.js"
+  },
+  "workspaces": [
+    "fe",
+    "server",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@changesets/cli": "^2.27.6",
+    "concurrently": "^8.2.2",
+    "tsx": "^4.20.6",
+    "turbo": "^1.13.4",
+    "typescript": "^5.6.3",
+    "@types/node": "^22.9.0",
+    "eslint": "^9.12.0",
+    "@typescript-eslint/parser": "^8.7.0",
+    "@typescript-eslint/eslint-plugin": "^8.7.0",
+    "prettier": "^3.3.3",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "dotenv": "^17.2.3"
+  },
+  "description": "tet",
+  "main": "index.js",
+  "dependencies": {
+    "eslint-plugin-vue": "^9.33.0",
+    "eslint-scope": "^8.4.0",
+    "eslint-visitor-keys": "^4.2.1",
+    "prettier-linter-helpers": "^1.0.0",
+    "vue-eslint-parser": "^9.4.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://3.37.56.14:8088/common/fe/wb-xms.git"
+  },
+  "author": "",
+  "license": "ISC"
+}

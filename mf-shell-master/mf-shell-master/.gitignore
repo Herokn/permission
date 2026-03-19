@@ -1,0 +1,22 @@
+**/node_modules/
+**/dist/
+**/.nuxt/
+**/.output/
+**/.cache/
+**/coverage/
+**/*.log
+**/.DS_Store
+**/.tsbuildinfo
+node_modules/
+fe/node_modules/
+server/node_modules/
+**/.turbo/
+fe/.turbo/
+server/.turbo/
+
+# 打包产物
+deploy-package.tar.gz
+
+# 允许 package.json 中列出的关键文件被提交
+!ecosystem.config.cjs
+!Dockerfile

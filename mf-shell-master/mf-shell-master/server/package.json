@@ -1,0 +1,32 @@
+{
+  "name": "@wb/mf-shell-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "build:with-web": "pnpm --dir ../fe build && tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/static": "^6.12.0",
+    "@nestjs/common": "^10.4.0",
+    "@nestjs/core": "^10.4.0",
+    "@nestjs/platform-fastify": "^10.4.0",
+    "fast-proxy": "^2.2.0",
+    "@fastify/http-proxy": "^8.3.0",
+    "fastify": "^4.27.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.1",
+    "@wb/shared": "workspace:*",
+    "@fastify/cors": "^8.2.1",
+    "@nestjs/config": "^3.2.2",
+    "class-validator": "^0.14.1",
+    "class-transformer": "^0.5.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6"
+  }
+}

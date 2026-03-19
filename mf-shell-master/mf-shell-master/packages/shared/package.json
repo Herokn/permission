@@ -1,0 +1,21 @@
+{
+  "name": "@wb/shared",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./api": "./dist/api/index.js",
+    "./types": "./dist/types/index.d.ts",
+    "./utils": "./dist/utils/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node ./scripts/copy-types.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "files": [
+    "dist/**"
+  ]
+}

@@ -1,0 +1,114 @@
+/* 页面卡片 */
+.pageCard {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 搜索区域 */
+.searchArea {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+/* 用户信息 */
+.userInfo {
+  margin-bottom: 8px;
+}
+
+/* Tab 内容 */
+.tabContent {
+  min-height: 300px;
+}
+
+.tabToolbar {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* 数据表格 */
+.dataTable {
+  margin-top: 0;
+}
+
+.dataTable :global(.ant-table-thead > tr > th) {
+  background: linear-gradient(135deg, #f6f8fc 0%, #f0f2f5 100%);
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #e8e8e8;
+  padding: 12px 16px;
+}
+
+.dataTable :global(.ant-table-tbody > tr > td) {
+  padding: 12px 16px;
+  user-select: none;
+  cursor: default;
+}
+
+.dataTable :global(.ant-table-cell) {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.dataTable :global(.ant-table-tbody > tr:hover > td) {
+  background-color: #e6f7ff !important;
+}
+
+/* 代码文本 */
+.codeText {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background: #f5f5f5;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #d46b08;
+}
+
+/* 权限树 */
+.permissionTree {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.moduleSection {
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.moduleHeader {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f0f5ff 0%, #e6f7ff 100%);
+  border-bottom: 1px solid #e8e8e8;
+  display: flex;
+  align-items: center;
+}
+
+.moduleContent {
+  padding: 12px 16px;
+  background: #fff;
+}
+
+.pageSection {
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.pageSection:last-child {
+  border-bottom: none;
+}
+
+.actionList {
+  margin-left: 24px;
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actionList > label {
+  margin-right: 16px;
+}

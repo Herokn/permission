@@ -1,0 +1,80 @@
+import type { TabValue } from 'tdesign-vue-next';
+import { LocationQueryRaw, RouteRecordName } from 'vue-router';
+
+import STYLE_CONFIG from '@/config/style';
+import { UserInfoResult } from '@/types/api/auth';
+
+export interface RouteMeta {
+  title?: string | Record<string, string>;
+  icon?: string;
+  expanded?: boolean;
+  orderNo?: number;
+  hidden?: boolean;
+  hiddenBreadcrumb?: boolean;
+  single?: boolean;
+  keepAlive?: boolean;
+  frameSrc?: string;
+  frameBlank?: boolean;
+  framePreload?: boolean;
+}
+
+export interface MenuRoute {
+  path: string;
+  title?: string | Record<string, string>;
+  name?: string;
+  icon?:
+    | string
+    | {
+        render: () => void;
+      };
+  redirect?: string;
+  children: MenuRoute[];
+  meta: RouteMeta;
+}
+
+export type ModeType = 'dark' | 'light';
+
+export type SettingType = typeof STYLE_CONFIG;
+
+export type ClassName = { [className: string]: any } | ClassName[] | string;
+
+export type CommonObjType = {
+  [key: string]: string | number;
+};
+
+export interface UserInfo extends UserInfoResult {
+  nickName: string;
+  roles: string[];
+}
+
+export interface NotificationItem {
+  id: string;
+  content: string;
+  type: string;
+  status: boolean;
+  collected: boolean;
+  date: string;
+  quality: string;
+}
+
+export interface TRouterInfo {
+  path: string;
+  query?: LocationQueryRaw;
+  routeIdx?: number;
+  title?: string;
+  name?: RouteRecordName;
+  isAlive?: boolean;
+  isHome?: boolean;
+  meta?: any;
+}
+
+export interface TTabRouterType {
+  isRefreshing: boolean;
+  tabRouterList: Array<TRouterInfo>;
+}
+
+export interface TTabRemoveOptions {
+  value: TabValue;
+  index: number;
+  e: MouseEvent;
+}

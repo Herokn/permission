@@ -1,0 +1,28 @@
+export default {
+  common: {},
+  startClosingTracker: {},
+  unitSchedule: {},
+  imageAnalyzeMgmt: {},
+  aiAnalysisReport: {
+    unitReportTitle: 'AI Progress And Quality Report',
+    projectReportTitle: 'AI Project Progress And Quality Report',
+    projectName: 'Project Name',
+    projectManager: 'Project Manager',
+    totalUnits: 'Under Construction Units', // 'Total Units',
+    unitsQuantity: 'Units Quantity',
+    completedUnitsQuantity: 'Completed Units Quantity',
+    progressAnalysis: 'Progress Analysis',
+    qualityAssessment: 'Quality Assessment',
+    totalCompletedUnits: 'Total Completed Units',
+    progressAndQuality: 'Progress And Quality',
+    completionRate: 'Completion Rate',
+  },
+  aiPerformanceReport: {
+    confirmDelete: 'Confirm Delete',
+    deleteConfirmMessage: 'Are you sure you want to delete this task? This action cannot be undone.',
+    taskDeletedSuccess: 'Task deleted successfully',
+    taskDeleteFailed: 'Failed to delete task',
+    confirm: 'Confirm',
+    cancel: 'Cancel',
+  },
+};

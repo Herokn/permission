@@ -1,0 +1,99 @@
+/** 公共前缀 */
+@starter-prefix: tdesign-starter;
+
+// ========== 颜色系统 ==========
+// 品牌色
+@brand-color: #2962f6;
+@brand-color-1: #f2f5ff;
+@brand-color-2: #d9e1ff;
+@brand-color-3: #b5c7ff;
+@brand-color-4: #8eabff;
+@brand-color-5: #618dff;
+@brand-color-6: #366ef4;
+@brand-color-7: #2962f6;
+@brand-color-8: #1e4ba8;
+@brand-color-9: #153a7a;
+@brand-color-10: #0d2a5c;
+
+// ========== 响应式断点 ==========
+@screen-sm: 768px;
+@screen-md: 992px;
+@screen-lg: 1200px;
+@screen-xl: 1400px;
+
+@screen-sm-min: @screen-sm;
+@screen-md-min: @screen-md;
+@screen-lg-min: @screen-lg;
+@screen-xl-min: @screen-xl;
+
+@screen-sm-max: calc(@screen-md-min - 1px);
+@screen-md-max: calc(@screen-lg-min - 1px);
+@screen-lg-max: calc(@screen-xl-min - 1px);
+
+// ========== 动画系统 ==========
+@anim-time-fn-easing: cubic-bezier(0.38, 0, 0.24, 1);
+@anim-time-fn-ease-out: cubic-bezier(0, 0, 0.15, 1);
+@anim-time-fn-ease-in: cubic-bezier(0.82, 0, 1, 0.9);
+@anim-duration-base: 0.2s;
+@anim-duration-moderate: 0.24s;
+@anim-duration-slow: 0.28s;
+
+// // ========== 暗色主题品牌色 ==========
+// @brand-color-dark: #4582f6;
+// @brand-color-1-dark: #0d1a2e;
+// @brand-color-2-dark: #1a2b47;
+// @brand-color-3-dark: #2a3f66;
+// @brand-color-4-dark: #3d5485;
+// @brand-color-5-dark: #5269a4;
+// @brand-color-6-dark: #6980c3;
+// @brand-color-7-dark: #4582f6;
+// @brand-color-8-dark: #7ba0f7;
+// @brand-color-9-dark: #a6bef8;
+// @brand-color-10-dark: #d1dcfa;
+
+// // ========== 主题色变体 ==========
+// @theme-color-blue: #0052D9;
+// @theme-color-green: #00A870;
+// @theme-color-yellow: #EBB105;
+
+// ========== 自定义扩展变量 ==========
+@ai-wb-child-header-height: 48px;
+@ai-wb-header-height: 64px;
+@ai-wb-sidebar-width: 232px;
+@ai-wb-sidebar-collapsed-width: 72px;
+
+// 自定义间距
+@ai-wb-spacing-xs: 4px;
+@ai-wb-spacing-sm: 8px;
+@ai-wb-spacing-md: 16px;
+@ai-wb-spacing-lg: 24px;
+@ai-wb-spacing-xl: 32px;
+
+// 涟漪效果颜色 (基于 header button hover 颜色)
+@ai-wb-ripple-color: rgba(32, 30, 68, 0.3); // 基于 @ai-wb-bg-color-header-button-hover 的 30% 透明度
+
+// 自定义 颜色
+@ai-wb-bg-color-header: #07052f;
+@ai-wb-bg-color-header-dark: #1a1a2e;
+@ai-wb-bg-color-header-button-hover: #201e44;
+@ai-wb-text-color-primary: #ffffff;
+
+@ai-wb-text-color-secondary: #666666;
+
+//自定义 border&border radius
+@ai-wb-border-radius-sm: 4px;
+@ai-wb-border-radius-md: 8px;
+@ai-wb-border-radius-lg: 12px;
+
+//自定义字体 尺寸大小
+@ai-wb-font-size-base: 12px;
+@ai-wb-font-size-sm: 14px;
+@ai-wb-font-size-lg: 16px;
+@ai-wb-font-size-xl: 20px;
+
+//自定义字体权重
+@ai-wb-font-weight-light: 300;
+@ai-wb-font-weight-normal: 400;
+@ai-wb-font-weight-medium: 500;
+@ai-wb-font-weight-semibold: 600;
+@ai-wb-font-weight-bold: 700;

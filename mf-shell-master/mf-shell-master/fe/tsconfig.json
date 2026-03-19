@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "types": ["vite/client", "vue", "vue/jsx"],
+    "skipLibCheck": true,
+    "paths": { "@/*": ["src/*"] }
+  },
+  "include": ["src", "env.d.ts"],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "src/common",
+    "src/hooks/common",
+    "src/hooks",
+    "src/utils",
+    "src/directives",
+    "src/event",
+    "src/types/api",
+    "src/components",
+    "src/api",
+    "src/index.ts"
+  ]
+}

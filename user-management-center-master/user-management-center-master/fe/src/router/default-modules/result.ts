@@ -1,0 +1,41 @@
+import Layout from '@/layouts/index.vue';
+
+export default [
+  {
+    path: '/result',
+    name: 'result',
+    component: Layout,
+    redirect: '/result/success',
+    meta: {
+      title: {
+        zh_CN: '结果页',
+        en_US: 'Result',
+      },
+      icon: 'check-circle',
+    },
+    children: [
+      {
+        path: 'success',
+        name: 'ResultSuccess',
+        component: () => import('@/pages/result/success/index.vue'),
+        meta: {
+          title: {
+            zh_CN: '成功页',
+            en_US: 'Success',
+          },
+        },
+      },
+      {
+        path: 'fail',
+        name: 'ResultFail',
+        component: () => import('@/pages/result/fail/index.vue'),
+        meta: {
+          title: {
+            zh_CN: '失败页',
+            en_US: 'Fail',
+          },
+        },
+      },
+    ],
+  },
+];

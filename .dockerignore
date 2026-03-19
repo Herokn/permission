@@ -1,0 +1,35 @@
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Maven
+target/
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Node (前端)
+node_modules/
+dist/
+.env.local
+
+# Spec & Plans (不需要打进镜像)
+spec/
+plans/
+skills/
+

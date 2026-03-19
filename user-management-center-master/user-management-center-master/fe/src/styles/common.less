@@ -1,0 +1,64 @@
+// 全局自定义样式
+
+// 表格-容器-边框+表头背景
+.ai-wb__table-container {
+  // 加边框
+  border-top: 1px solid var(--td-component-border);
+  .t-table__content {
+    // 第一列
+    tr > th:first-child,
+    tr > td:first-child {
+      border-left: 1px solid var(--td-component-border);
+    }
+    // 最后一列
+    tr > th:last-child,
+    tr > td:last-child {
+      border-right: 1px solid var(--td-component-border);
+    }
+  }
+  // 最后一列-表头 加背景
+  .t-table__header tr > th {
+    background-color: var(--td-bg-color-secondarycontainer);
+  }
+}
+
+.ai-wb__table-container-bg {
+  // 最后一列-表头 加背景
+  .t-table__header tr > th {
+    background-color: var(--td-bg-color-secondarycontainer);
+  }
+}
+
+// 自定导航头
+.t-head-menu {
+  background-color: var(--ai-wb-bg-color-header);
+  .t-button--variant-text {
+    color: var(--ai-wb-text-color-primary);
+    .header-user-account {
+      color: var(--ai-wb-text-color-primary) !important;
+    }
+    &:hover,
+    &:focus-visible {
+      background-color: var(--ai-wb-bg-color-header-button-hover);
+      border-color: var(--ai-wb-bg-color-header-button-hover);
+    }
+  }
+  .t-button {
+    /* 方案1: 使用 CSS 自定义属性 (推荐) */
+    --ripple-color: rgba(0, 0, 0, 0.1) !important;
+
+    /* 方案3: 现代浏览器渐进增强 */
+    --ripple-color: color-mix(
+      in srgb,
+      var(--ai-wb-bg-color-header-button-hover) 30%,
+      transparent
+    ) !important;
+  }
+}
+.t-menu__logo:not(:empty) {
+  background-color: var(--ai-wb-bg-color-header);
+}
+
+.t-form__item {
+  margin-bottom: 24px !important;
+}

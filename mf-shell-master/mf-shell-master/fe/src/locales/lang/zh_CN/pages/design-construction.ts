@@ -1,0 +1,28 @@
+export default {
+  common: {},
+  startClosingTracker: {},
+  unitSchedule: {},
+  imageAnalyzeMgmt: {},
+  aiAnalysisReport: {
+    unitReportTitle: 'AI分析进度报告和质量报告',
+    projectReportTitle: 'AI分析项目进度报告和质量报告',
+    projectName: '项目名称',
+    projectManager: '项目负责人',
+    totalUnits: '在建单位', // '总单元数',
+    totalCompletedUnits: '已完成单元数',
+    progressAndQuality: '进度与质量',
+    unitsQuantity: 'builder 负责的unit数量',
+    completedUnitsQuantity: '已完成单元数量',
+    progressAnalysis: '进度分析',
+    qualityAssessment: '质量评估',
+    completionRate: '完成率',
+  },
+  aiPerformanceReport: {
+    confirmDelete: '确认删除',
+    deleteConfirmMessage: '您确定要删除此任务吗？此操作无法撤销。',
+    taskDeletedSuccess: '任务删除成功',
+    taskDeleteFailed: '删除任务失败',
+    confirm: '确认',
+    cancel: '取消',
+  },
+};

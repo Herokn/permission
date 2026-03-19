@@ -1,0 +1,110 @@
+/**
+ * TDesign 主题变量覆盖
+ * 基于 variables.less 中定义的 Less 变量来设置 CSS 自定义属性
+ * 这样可以实现统一的变量管理和设置
+ */
+
+/* 导入 Less 变量 */
+@import './variables.less';
+
+:root {
+  /* ========== 品牌色系统 ========== */
+  --td-brand-color: @brand-color;
+  --td-brand-color-1: @brand-color-1;
+  --td-brand-color-2: @brand-color-2;
+  --td-brand-color-3: @brand-color-3;
+  --td-brand-color-4: @brand-color-4;
+  --td-brand-color-5: @brand-color-5;
+  --td-brand-color-6: @brand-color-6;
+  --td-brand-color-7: @brand-color-7;
+  --td-brand-color-8: @brand-color-8;
+  --td-brand-color-9: @brand-color-9;
+  --td-brand-color-10: @brand-color-10;
+
+  /* ========== 响应式断点 ========== */
+  --td-screen-sm: @screen-sm;
+  --td-screen-md: @screen-md;
+  --td-screen-lg: @screen-lg;
+  --td-screen-xl: @screen-xl;
+
+  /* ========== 动画系统 ========== */
+  --td-anim-time-fn-easing: @anim-time-fn-easing;
+  --td-anim-time-fn-ease-out: @anim-time-fn-ease-out;
+  --td-anim-time-fn-ease-in: @anim-time-fn-ease-in;
+  --td-anim-duration-base: @anim-duration-base;
+  --td-anim-duration-moderate: @anim-duration-moderate;
+  --td-anim-duration-slow: @anim-duration-slow;
+
+  /* ========== 主题色变体 ========== */
+  // --td-theme-color-blue: @theme-color-blue;
+  // --td-theme-color-green: @theme-color-green;
+  // --td-theme-color-yellow: @theme-color-yellow;
+}
+
+/* ========== 暗色主题 ========== */
+// [theme-mode="dark"] {
+//   // /* 品牌色 - 暗色主题 */
+//   // --td-brand-color: @brand-color-dark;
+//   // /* 自定义背景色 - 暗色主题 */
+//   // --td-bg-color-header: @bg-color-header-dark;
+// }
+
+// /* ========== 主题预设 ========== */
+// /* 蓝色主题 */
+// [data-theme="blue"] {
+//   --td-brand-color: @theme-color-blue;
+// }
+
+// /* 绿色主题 */
+// [data-theme="green"] {
+//   --td-brand-color: @theme-color-green;
+// }
+
+// /* 黄色主题 */
+// [data-theme="yellow"] {
+//   --td-brand-color: @theme-color-yellow;
+// }
+
+/* ========== 自定义扩展变量 ========== */
+:root {
+  // ========== 自定义扩展变量 ==========
+  /* 项目特有的自定义变量 */
+  --ai-wb-header-height: @ai-wb-header-height;
+  --ai-wb-child-header-height: @ai-wb-child-header-height;
+  --ai-wb-sidebar-width: @ai-wb-sidebar-width;
+  --ai-wb-sidebar-collapsed-width: @ai-wb-sidebar-collapsed-width;
+
+  /* 自定义间距 */
+  --ai-wb-spacing-xs: @ai-wb-spacing-xs;
+  --ai-wb-spacing-sm: @ai-wb-spacing-sm;
+  --ai-wb-spacing-md: @ai-wb-spacing-md;
+  --ai-wb-spacing-lg: @ai-wb-spacing-lg;
+  --ai-wb-spacing-xl: @ai-wb-spacing-xl;
+
+  /* 涟漪效果颜色 */
+  --ai-wb-ripple-color: @ai-wb-ripple-color;
+
+  /* ========== 自定义颜色 ========== */
+  --ai-wb-bg-color-header: @ai-wb-bg-color-header;
+  --ai-wb-bg-color-header-dark: @ai-wb-bg-color-header-dark;
+  --ai-wb-bg-color-header-button-hover: @ai-wb-bg-color-header-button-hover;
+  --ai-wb-text-color-primary: @ai-wb-text-color-primary;
+
+  /*自定义border&border-radius*/
+  --ai-wb-border-radius-sm: @ai-wb-border-radius-sm;
+  --ai-wb-border-radius-md: @ai-wb-border-radius-md;
+  --ai-wb-border-radius-lg: @ai-wb-border-radius-lg;
+
+  /*自定义字体尺寸大小*/
+  --ai-wb-font-size-base: @ai-wb-font-size-base;
+  --ai-wb-font-size-sm: @ai-wb-font-size-sm;
+  --ai-wb-font-size-lg: @ai-wb-font-size-lg;
+  --ai-wb-font-size-xl: @ai-wb-font-size-xl;
+
+  /*自定义字体权重*/
+  --ai-wb-font-weight-light: @ai-wb-font-weight-light;
+  --ai-wb-font-weight-normal: @ai-wb-font-weight-normal;
+  --ai-wb-font-weight-semibold: @ai-wb-font-weight-semibold;
+  --ai-wb-font-weight-medium: @ai-wb-font-weight-medium;
+  --ai-wb-font-weight-bold: @ai-wb-font-weight-bold;
+}

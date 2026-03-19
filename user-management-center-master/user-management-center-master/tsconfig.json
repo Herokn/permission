@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./fe" },
+    { "path": "./server" },
+    { "path": "./packages/shared" }
+  ]
+}
