@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button, Modal, Form, Input, Select, message, Popconfirm, Card, Space, Tabs, Tag, InputNumber } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, ApartmentOutlined, UnorderedListOutlined, BuildingOutlined, TeamOutlined, ApartmentOutlined as OrgIcon } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, ApartmentOutlined, BuildOutlined, ApartmentOutlined as OrgIcon } from '@ant-design/icons';
 import request from '@/utils/request';
 import styles from './OrganizationPage.module.css';
 
@@ -122,101 +122,6 @@ const OrganizationPage: React.FC = () => {
     }
   };
 
-  // 构建卡片式树形结构
-  const buildOrgCards = () => {
-    const buildCard = (org: Organization, level: number = 0): React.ReactNode => {
-      const typeInfo = ORG_TYPES.find(t => t.value === org.orgType);
-      const hasChildren = org.children && org.children.length > 0;
-
-      return (
-        <div key={org.id} style={{ marginBottom: hasChildren ? 16 : 0 }}>
-          <Card
-            size="small"
-            className={styles.orgCard}
-            style={{
-              marginLeft: level * 24,
-              borderColor: selectedNode?.id === org.id ? '#1890ff' : undefined,
-              boxShadow: selectedNode?.id === org.id ? '0 0 0 2px rgba(24, 144, 255, 0.2)' : undefined,
-            }}
-            hoverable
-            onClick={() => setSelectedNode(selectedNode?.id === org.id ? null : org)}
-          >
-            <div className={styles.cardHeader}>
-              <div className={styles.cardTitle}>
-                <Tag color={typeInfo?.color} style={{ margin: 0 }}>
-                  {typeInfo?.icon} {typeInfo?.label}
-                </Tag>
-                <strong>{org.orgName}</strong>
-                <span className={styles.orgCode}>({org.orgCode})</span>
-                {org.status === 'DISABLED' && (
-                  <Tag color="red" style={{ marginLeft: 8 }}>已禁用</Tag>
-                )}
-              </div>
-              <Space size="small">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<PlusOutlined />}
-                  onClick={(e) => { e.stopPropagation(); handleAdd(org.id); }}
-                  className={styles.iconBtn}
-                >
-                  添加子组织
-                </Button>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<EditOutlined />}
-                  onClick={(e) => { e.stopPropagation(); handleEdit(org); }}
-                  className={styles.iconBtn}
-                >
-                  编辑
-                </Button>
-                <Popconfirm
-                  title="确定要删除此组织吗？"
-                  description="删除后将同时删除所有子组织"
-                  onConfirm={(e) => {
-                    e?.stopPropagation();
-                    handleDelete(org.id);
-                  }}
-                  onCancel={(e) => e?.stopPropagation()}
-                >
-                  <Button
-                    type="text"
-                    size="small"
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={(e) => e.stopPropagation()}
-                    className={styles.iconBtn}
-                  >
-                    删除
-                  </Button>
-                </Popconfirm>
-              </Space>
-            </div>
-            {org.description && (
-              <div className={styles.cardDescription}>{org.description}</div>
-            )}
-            {org.parentName && (
-              <div className={styles.cardMeta}>
-                上级: <Tag>{org.parentName}</Tag>
-              </div>
-            )}
-          </Card>
-          {hasChildren && (
-            <div className={styles.childrenContainer}>
-              {org.children!.map(child => buildCard(child, level + 1))}
-            </div>
-          )}
-        </div>
-      );
-    };
-
-    return treeData.map(node => {
-      const org = node.org;
-      return buildCard(org);
-    });
-  };
-
   // 渲染树形视图（使用 Ant Design Tree 组件）
   const renderTreeView = () => {
     const renderTreeNodes = (data: TreeNode[]): any[] => {
@@ -250,7 +155,7 @@ const OrganizationPage: React.FC = () => {
         <Card className={styles.treeCard}>
           {treeData.length === 0 ? (
             <div className={styles.emptyState}>
-              <BuildingOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
+              <BuildOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
               <p>暂无组织数据，请点击上方"新增组织"按钮创建</p>
             </div>
           ) : (

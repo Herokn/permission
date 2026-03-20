@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Button, Space, Modal, Form, Input, InputNumber, message, Popconfirm, Card, Tag, Badge } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, TrophyOutlined, UserOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, TrophyOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import request from '@/utils/request';
 import styles from './PositionPage.module.css';
@@ -100,7 +100,7 @@ const PositionPage: React.FC = () => {
       title: '岗位名称',
       dataIndex: 'positionName',
       key: 'positionName',
-      render: (name: string, record: Position) => (
+      render: (name: string) => (
         <Space>
           <TrophyOutlined style={{ color: '#faad14' }} />
           <strong>{name}</strong>
