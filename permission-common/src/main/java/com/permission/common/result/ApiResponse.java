@@ -6,13 +6,13 @@ import lombok.Data;
  * 统一响应体
  */
 @Data
-public class ApiResponse<T> {
+public final class ApiResponse<T> {
 
     private int code;
     private String message;
     private T data;
 
-    private ApiResponse() {}
+    private ApiResponse() { }
 
     private ApiResponse(int code, String message, T data) {
         this.code = code;

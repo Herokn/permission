@@ -6,6 +6,10 @@ package com.permission.common.context;
  */
 public class DataPermissionContextHolder {
 
+    private DataPermissionContextHolder() {
+        throw new UnsupportedOperationException("Utility class");
+    }
+
     private static final ThreadLocal<DataPermissionContext> CONTEXT = new ThreadLocal<>();
 
     /**

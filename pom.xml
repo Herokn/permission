@@ -146,7 +146,7 @@
                     <configLocation>checkstyle.xml</configLocation>
                     <encoding>UTF-8</encoding>
                     <consoleOutput>true</consoleOutput>
-                    <failsOnError>false</failsOnError>
+                    <failsOnError>true</failsOnError>
                     <violationSeverity>warning</violationSeverity>
                 </configuration>
                 <executions>

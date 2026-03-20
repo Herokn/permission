@@ -34,7 +34,8 @@ public class AuthInterceptor implements HandlerInterceptor {
     public static final String SESSION_ID_ATTRIBUTE = "sessionId";
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
+                             Object handler) throws Exception {
         String token = extractToken(request);
         
         if (token == null) {
@@ -97,7 +98,9 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     private String getCookieValue(HttpServletRequest request, String name) {
         Cookie[] cookies = request.getCookies();
-        if (cookies == null) return null;
+        if (cookies == null) {
+            return null;
+        }
         for (Cookie cookie : cookies) {
             if (name.equals(cookie.getName())) {
                 return cookie.getValue();
@@ -107,7 +110,8 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
+                                Object handler, Exception ex) throws Exception {
         UserContextHolder.clear();
     }
 }

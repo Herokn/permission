@@ -46,12 +46,14 @@ public class JwtConfig {
                             + "(local dev: activate profile 'dev' in application-dev.yml or export JWT_SECRET)");
         }
         if (secret.length() < MIN_SECRET_LENGTH) {
-            throw new IllegalStateException("JWT secret must be at least " + MIN_SECRET_LENGTH + " characters, current: " + secret.length());
+            throw new IllegalStateException("JWT secret must be at least " + MIN_SECRET_LENGTH
+                    + " characters, current: " + secret.length());
         }
         String trimmed = secret.trim();
         for (String bad : FORBIDDEN_SECRETS) {
             if (bad.equalsIgnoreCase(trimmed)) {
-                throw new IllegalStateException("JWT secret matches a known weak/default value; set a unique JWT_SECRET for this environment");
+                throw new IllegalStateException(
+                        "JWT secret matches a known weak/default value; set a unique JWT_SECRET");
             }
         }
         log.info("JWT configuration validated, secret length: {}", secret.length());

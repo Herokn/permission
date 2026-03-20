@@ -5,7 +5,7 @@ package com.permission.common.constant;
  */
 public final class PermissionCode {
 
-    private PermissionCode() {}
+    private PermissionCode() { }
 
     /**
      * 权限中心管理权限

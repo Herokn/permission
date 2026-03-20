@@ -5,7 +5,7 @@ package com.permission.common.constant;
  */
 public final class PermissionConstant {
 
-    private PermissionConstant() {}
+    private PermissionConstant() { }
 
     /** 默认页码 */
     public static final int DEFAULT_PAGE_NUM = 1;

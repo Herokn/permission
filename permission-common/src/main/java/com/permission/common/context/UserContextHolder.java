@@ -9,6 +9,10 @@ import com.permission.common.exception.ErrorCode;
  */
 public class UserContextHolder {
 
+    private UserContextHolder() {
+        throw new UnsupportedOperationException("Utility class");
+    }
+
     private static final ThreadLocal<UserInfoDTO> USER = new ThreadLocal<>();
 
     /**
