@@ -42,10 +42,10 @@ public class GlobalExceptionHandler {
             return HttpStatus.INTERNAL_SERVER_ERROR;
         }
         
-        // 认证相关：144xxx, 143xxx -> 401
+        // 认证相关：144xxx, 143xxx -> 401，但用户禁用(143002)返回 403
         if (errorCode.startsWith("143") || errorCode.startsWith("144")) {
-            if ("144003".equals(errorCode)) {
-                return HttpStatus.FORBIDDEN;  // AUTH_FORBIDDEN -> 403
+            if ("144003".equals(errorCode) || "143002".equals(errorCode)) {
+                return HttpStatus.FORBIDDEN;  // AUTH_FORBIDDEN 或 USER_DISABLED -> 403
             }
             return HttpStatus.UNAUTHORIZED;  // 其他认证错误 -> 401
         }
