@@ -39,7 +39,7 @@ RUN apk add --no-cache wget tzdata && \
     echo "Asia/Shanghai" > /etc/timezone && \
     apk del tzdata
 
-COPY --from=builder /app/permission-bootstrap/target/*.jar app.jar
+COPY --from=builder /app/permission-bootstrap/target/*-exec.jar app.jar
 
 # Create non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
