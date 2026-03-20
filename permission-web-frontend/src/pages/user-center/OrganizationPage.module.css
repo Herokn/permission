@@ -1,0 +1,185 @@
+/* 页面卡片 */
+.pageCard {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 统计信息 */
+.statistics {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.count {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1890ff;
+  margin: 0 4px;
+}
+
+/* 树形卡片 */
+.treeCard {
+  border-radius: 8px;
+}
+
+.treeContainer {
+  padding: 8px 0;
+}
+
+.treeItem {
+  margin-bottom: 12px;
+}
+
+.treeNodeCard {
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+  transition: all 0.2s;
+}
+
+.treeNodeCard:hover {
+  border-color: #d9d9d9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.treeNodeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 组织编码 */
+.orgCode {
+  color: #999;
+  font-size: 12px;
+  margin-left: 8px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* 卡片样式 */
+.orgCard {
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+  transition: all 0.2s;
+}
+
+.orgCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cardDescription {
+  color: #666;
+  font-size: 13px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f5f5f5;
+}
+
+.cardMeta {
+  color: #999;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.childrenContainer {
+  margin-top: 8px;
+}
+
+/* 图标按钮 */
+.iconBtn {
+  padding: 0 4px;
+  font-size: 12px;
+}
+
+/* 子树缩进 */
+.subTree {
+  margin-top: 12px;
+  padding-left: 12px;
+  border-left: 2px dashed #e8e8e8;
+}
+
+/* 空状态 */
+.emptyState {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.emptyState :global(.anticon) {
+  font-size: 64px;
+  color: #d9d9d9;
+  margin-bottom: 16px;
+}
+
+/* 树节点样式 */
+.treeNode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.treeNodeTitle {
+  font-weight: 500;
+}
+
+.treeNodeCode {
+  color: #999;
+  font-size: 12px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* 模态框 */
+.editModal :global(.ant-modal-header) {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 16px 24px;
+}
+
+.modalTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 编辑表单 */
+.editForm {
+  padding-top: 8px;
+}
+
+.editForm :global(.ant-form-item-label > label) {
+  font-weight: 500;
+  color: #333;
+}
+
+.editForm :global(.ant-input),
+.editForm :global(.ant-input-number),
+.editForm :global(.ant-select-selector),
+.editForm :global(.ant-input-textarea-show-count::after) {
+  border-radius: 6px;
+}
+
+.editForm :global(.ant-input:focus),
+.editForm :global(.ant-input-number-focused),
+.editForm :global(.ant-select-focused .ant-select-selector),
+.editForm :global(.ant-input-textarea:focus) {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}

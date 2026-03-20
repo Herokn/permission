@@ -1,0 +1,115 @@
+/* 页面卡片 */
+.pageCard {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 工具栏 */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* 统计信息 */
+.statistics {
+  font-size: 14px;
+  color: #666;
+}
+
+/* 数据表格 */
+.dataTable {
+  margin-top: 0;
+}
+
+.dataTable :global(.ant-table-thead > tr > th) {
+  background: linear-gradient(135deg, #f6f8fc 0%, #f0f2f5 100%);
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #e8e8e8;
+  padding: 12px 16px;
+}
+
+.dataTable :global(.ant-table-tbody > tr > td) {
+  padding: 12px 16px;
+  user-select: none;
+  cursor: default;
+}
+
+.dataTable :global(.ant-table-cell) {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.evenRow {
+  background-color: #fafbfc;
+}
+
+.oddRow {
+  background-color: #fff;
+}
+
+.dataTable :global(.ant-table-tbody > tr:hover > td) {
+  background-color: #e6f7ff !important;
+}
+
+/* 岗位编码 */
+.codeText {
+  background: #f5f5f5;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #d46b08;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* 空值文本 */
+.emptyText {
+  color: #bfbfbf;
+  font-style: italic;
+}
+
+/* 操作按钮 */
+.actionBtn {
+  padding: 0 4px;
+}
+
+/* 模态框 */
+.editModal :global(.ant-modal-header) {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 16px 24px;
+}
+
+.modalTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 编辑表单 */
+.editForm {
+  padding-top: 8px;
+}
+
+.editForm :global(.ant-form-item-label > label) {
+  font-weight: 500;
+  color: #333;
+}
+
+.editForm :global(.ant-input),
+.editForm :global(.ant-input-number),
+.editForm :global(.ant-select-selector),
+.editForm :global(.ant-input-textarea-show-count::after) {
+  border-radius: 6px;
+}
+
+.editForm :global(.ant-input:focus),
+.editForm :global(.ant-input-number-focused),
+.editForm :global(.ant-select-focused .ant-select-selector),
+.editForm :global(.ant-input-textarea:focus) {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
