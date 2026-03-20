@@ -55,16 +55,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: permission-web-frontend/package-lock.json
-
-      - name: Cache node modules
-        uses: actions/cache@v4
-        with:
-          path: permission-web-frontend/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('permission-web-frontend/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
 
       - name: Install & Build
         working-directory: permission-web-frontend
