@@ -16,9 +16,24 @@ public class UserDO {
     private Long id;
 
     /**
-     * 用户唯一标识
+     * 业务用户ID（鉴权主键，非登录账号）
      */
     private String userId;
+
+    /**
+     * 登录账号
+     */
+    private String loginAccount;
+
+    /**
+     * BCrypt 密码哈希
+     */
+    private String passwordHash;
+
+    /**
+     * 0=业务用户（列表可见） 1=系统内置（列表不可见）
+     */
+    private Integer userType;
 
     /**
      * 显示名称

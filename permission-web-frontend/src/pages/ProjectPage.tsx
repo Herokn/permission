@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Space, Modal, Form, Input, Select, message, Popconfirm, Card, Tag, Divider } from 'antd';
+import { Table, Button, Space, Modal, Form, Input, Select, message, Popconfirm, Card, Tag, Divider, Alert } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { listProjects, createProject, updateProject, deleteProject } from '@/services/api';
 import type { Project, ProjectRequest, SystemModule } from '@/types';
+
+const BUILTIN_PROJECT_CODES = new Set(['UC', 'PC']);
 
 const ProjectPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -105,6 +107,12 @@ const ProjectPage: React.FC = () => {
       title: '项目名称',
       dataIndex: 'name',
       key: 'name',
+      render: (name: string, record) => (
+        <Space>
+          <span>{name}</span>
+          {BUILTIN_PROJECT_CODES.has(record.code) && <Tag color="blue">内置</Tag>}
+        </Space>
+      ),
     },
     {
       title: '系统模块',
@@ -151,8 +159,18 @@ const ProjectPage: React.FC = () => {
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             编辑
           </Button>
-          <Popconfirm title="确定要删除此项目吗？" onConfirm={() => handleDelete(record.id)}>
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
+          <Popconfirm
+            title="确定要删除此项目吗？"
+            onConfirm={() => handleDelete(record.id)}
+            disabled={BUILTIN_PROJECT_CODES.has(record.code)}
+          >
+            <Button
+              type="link"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              disabled={BUILTIN_PROJECT_CODES.has(record.code)}
+            >
               删除
             </Button>
           </Popconfirm>
@@ -163,6 +181,22 @@ const ProjectPage: React.FC = () => {
 
   return (
     <Card>
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="项目与两大产品线对应关系"
+        description={
+          <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+            <p style={{ margin: '0 0 8px' }}>
+              <strong>用户中心（UC）</strong>、<strong>权限中心（PC）</strong> 为平台内置项目，其「系统模块」与左侧菜单中的子模块一致，并在「权限点管理」里作为所属项目/系统联动。
+            </p>
+            <p style={{ margin: 0 }}>
+              可按需「新增项目」扩展更多业务线；内置 UC/PC 不可删除。
+            </p>
+          </div>
+        }
+      />
       <div style={{ marginBottom: 16 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
           新增项目

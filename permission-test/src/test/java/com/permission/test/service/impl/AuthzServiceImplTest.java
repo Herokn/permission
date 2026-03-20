@@ -256,7 +256,7 @@ class AuthzServiceImplTest extends BaseTest {
         // 组织 1 没有父组织
         OrganizationDO org = new OrganizationDO();
         org.setId(1L);
-        org.setName("技术部");
+        org.setOrgName("技术部");
         org.setParentId(null);
         when(organizationService.getById(1L)).thenReturn(org);
 
@@ -297,14 +297,14 @@ class AuthzServiceImplTest extends BaseTest {
         // 子组织 2 的父组织是 1
         OrganizationDO childOrg = new OrganizationDO();
         childOrg.setId(2L);
-        childOrg.setName("前端组");
+        childOrg.setOrgName("前端组");
         childOrg.setParentId(1L);
         when(organizationService.getById(2L)).thenReturn(childOrg);
 
         // 父组织 1
         OrganizationDO parentOrg = new OrganizationDO();
         parentOrg.setId(1L);
-        parentOrg.setName("技术部");
+        parentOrg.setOrgName("技术部");
         parentOrg.setParentId(null);
         when(organizationService.getById(1L)).thenReturn(parentOrg);
 
@@ -435,6 +435,29 @@ class AuthzServiceImplTest extends BaseTest {
         // Assert
         assertFalse(resultA.isAllowed(), "项目A应该被拒绝（DENY）");
         assertTrue(resultB.isAllowed(), "项目B应该有权限（角色授权）");
+    }
+
+    @Test
+    @DisplayName("getUserPermissionCodes 合并用户直接 ALLOW（与登录态 permissions 一致）")
+    void testGetUserPermissionCodes_IncludesDirectAllow() {
+        when(userRoleService.listByUserId("user1")).thenReturn(Collections.emptyList());
+        when(userOrgService.listByUserId("user1")).thenReturn(Collections.emptyList());
+
+        UserPermissionDO allow = new UserPermissionDO();
+        allow.setUserId("user1");
+        allow.setPermissionCode("USER_CENTER_USER_VIEW");
+        allow.setEffect("ALLOW");
+        allow.setProjectId("UC");
+        when(userPermissionService.listByUserId("user1")).thenReturn(List.of(allow));
+
+        Set<String> merged = authzService.getUserPermissionCodes("user1", null);
+        assertTrue(merged.contains("USER_CENTER_USER_VIEW"));
+
+        Set<String> inUc = authzService.getUserPermissionCodes("user1", "UC");
+        assertTrue(inUc.contains("USER_CENTER_USER_VIEW"));
+
+        Set<String> inPc = authzService.getUserPermissionCodes("user1", "PC");
+        assertFalse(inPc.contains("USER_CENTER_USER_VIEW"));
     }
 }
 

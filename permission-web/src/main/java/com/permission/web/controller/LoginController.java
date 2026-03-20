@@ -33,6 +33,9 @@ public class LoginController {
     @Value("${cookie.secure:false}")
     private boolean cookieSecure;
 
+    @Value("${cookie.same-site:Lax}")
+    private String cookieSameSite;
+
     @Operation(summary = "账号密码登录")
     @PostMapping("/login")
     public ApiResponse<UserInfoVO> login(@RequestBody @Valid LoginDTO dto, HttpServletResponse response) {
@@ -92,22 +95,30 @@ public class LoginController {
         return ApiResponse.success(loginManager.getCurrentUser(sessionId));
     }
 
+    @Operation(summary = "获取当前用户权限和模块列表")
+    @GetMapping("/permissions")
+    public ApiResponse<UserInfoVO> getPermissions(HttpServletRequest request) {
+        String sessionId = (String) request.getAttribute(AuthInterceptor.SESSION_ID_ATTRIBUTE);
+        return ApiResponse.success(loginManager.getCurrentUser(sessionId));
+    }
+
     private void setCookie(HttpServletResponse response, String name, String value, int maxAgeSeconds) {
-        Cookie cookie = new Cookie(name, value);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(cookieSecure);
-        cookie.setPath("/");
-        cookie.setMaxAge(Math.max(maxAgeSeconds, 0));
-        response.addCookie(cookie);
+        // 使用 Set-Cookie 头以支持 SameSite 属性（Jakarta Cookie API 不直接支持）
+        String cookieValue = String.format("%s=%s; Path=/; HttpOnly; %s; SameSite=%s; Max-Age=%d",
+                name, value,
+                cookieSecure ? "Secure" : "",
+                cookieSameSite,
+                Math.max(maxAgeSeconds, 0));
+        response.addHeader("Set-Cookie", cookieValue);
     }
 
     private void clearCookie(HttpServletResponse response, String name) {
-        Cookie cookie = new Cookie(name, null);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(cookieSecure);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+        // 清除 Cookie 时也需包含 SameSite
+        String cookieValue = String.format("%s=; Path=/; HttpOnly; %s; SameSite=%s; Max-Age=0",
+                name,
+                cookieSecure ? "Secure" : "",
+                cookieSameSite);
+        response.addHeader("Set-Cookie", cookieValue);
     }
 
     private String getCookieValue(HttpServletRequest request, String name) {

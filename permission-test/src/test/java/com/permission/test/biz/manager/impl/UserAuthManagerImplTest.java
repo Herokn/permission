@@ -5,6 +5,7 @@ import com.permission.common.enums.CommonStatusEnum;
 import com.permission.common.enums.PermissionEffectEnum;
 import com.permission.common.exception.BusinessException;
 import com.permission.dal.dataobject.*;
+import com.permission.dal.mapper.UserMapper;
 import com.permission.service.*;
 import com.permission.service.cache.AuthzCacheService;
 import com.permission.biz.dto.userauth.AssignUserRoleDTO;
@@ -35,6 +36,8 @@ class UserAuthManagerImplTest extends BaseTest {
     private UserPermissionService userPermissionService;
     @Mock
     private RoleService roleService;
+    @Mock
+    private RolePermissionService rolePermissionService;
     @Mock
     private PermissionService permissionService;
     @Mock
@@ -69,7 +72,7 @@ class UserAuthManagerImplTest extends BaseTest {
 
         enabledPermission = new PermissionDO();
         enabledPermission.setId(1L);
-        enabledPermission.setCode("ORDER_VIEW");
+        enabledPermission.setCode("USER_CENTER_USER_VIEW");
         enabledPermission.setName("查看订单");
     }
 
@@ -186,6 +189,10 @@ class UserAuthManagerImplTest extends BaseTest {
 
         when(userRoleService.listByUserId("user1")).thenReturn(List.of(ur));
         when(roleService.listByIds(List.of(1L))).thenReturn(List.of(enabledRole));
+        RolePermissionDO rp = new RolePermissionDO();
+        rp.setRoleId(1L);
+        rp.setPermissionCode("FROM_ROLE_PERM");
+        when(rolePermissionService.listByRoleId(1L)).thenReturn(List.of(rp));
         when(userPermissionService.listByUserId("user1")).thenReturn(List.of(up));
         when(permissionService.listByCodes(List.of("ORDER_VIEW"))).thenReturn(List.of(enabledPermission));
 
@@ -199,6 +206,8 @@ class UserAuthManagerImplTest extends BaseTest {
         assertEquals("ADMIN", result.getRoles().get(0).getRoleCode());
         assertEquals(1, result.getDirectPermissions().size());
         assertEquals("ORDER_VIEW", result.getDirectPermissions().get(0).getPermissionCode());
+        assertNotNull(result.getRolePermissionCodes());
+        assertTrue(result.getRolePermissionCodes().contains("FROM_ROLE_PERM"));
     }
 
     // [单测用例]测试场景：移除角色-幂等移除应成功
@@ -266,6 +275,7 @@ class UserAuthManagerImplTest extends BaseTest {
         project.setId(1L);
         project.setCode("PROJECT_A");
         project.setName("项目A");
+        project.setStatus(CommonStatusEnum.ENABLED.getCode());
 
         GrantUserPermissionDTO dto = new GrantUserPermissionDTO();
         dto.setUserId("user1");

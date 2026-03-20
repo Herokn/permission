@@ -13,6 +13,7 @@ import {
   Card,
   InputNumber,
   Tabs,
+  Tooltip,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, UnorderedListOutlined, ApartmentOutlined, FolderOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -27,10 +28,28 @@ import {
 import type { Permission, PermissionRequest, Project } from '@/types';
 import styles from './PermissionPage.module.css';
 
+/** 无项目上下文时的系统编码中文展示 */
+const SYSTEM_CODE_ZH: Record<string, string> = {
+  USER_CENTER: '用户中心',
+  PERMISSION_CENTER: '权限中心',
+  PERM: '权限（树）',
+  SYS: '系统',
+  UC_USER: '用户管理',
+  UC_ORG: '组织与层级',
+  UC_POSITION: '岗位管理',
+  PC_PROJECT: '项目管理',
+  PC_PERMISSION: '权限点管理',
+  PC_ROLE: '角色管理',
+  PC_GRANT: '用户授权',
+  PC_AUDIT: '审计日志',
+};
+
 const permissionTypes = [
   { value: 'MENU', label: '菜单', icon: '📁', color: '#1890ff' },
   { value: 'PAGE', label: '页面', icon: '📄', color: '#13c2c2' },
   { value: 'ACTION', label: '操作', icon: '⚡', color: '#52c41a' },
+  { value: 'MODULE', label: '模块', icon: '📦', color: '#8c8c8c' },
+  { value: 'OPERATION', label: '操作项', icon: '⚡', color: '#389e0d' },
 ];
 
 const PermissionPage: React.FC = () => {
@@ -223,10 +242,10 @@ const PermissionPage: React.FC = () => {
       key: 'systemCode',
       width: 140,
       render: (systemCode: string, record: Permission) => {
-        // 根据权限点的 projectId 查找对应项目的系统模块
-        const project = projects.find(p => p.code === record.projectId);
-        const system = project?.systems?.find(s => s.code === systemCode);
-        return <Tag color="geekblue">{system?.name || systemCode}</Tag>;
+        const project = projects.find((p) => p.code === record.projectId);
+        const system = project?.systems?.find((s) => s.code === systemCode);
+        const label = system?.name || SYSTEM_CODE_ZH[systemCode] || systemCode;
+        return <Tag color="geekblue">{label}</Tag>;
       },
     },
     {
@@ -236,7 +255,7 @@ const PermissionPage: React.FC = () => {
       width: 100,
       render: (projectId: string) => {
         if (!projectId) return <Tag color="blue">全局</Tag>;
-        const project = projects.find(p => p.code === projectId);
+        const project = projects.find((p) => p.code === projectId);
         return <Tag color="green">{project?.name || projectId}</Tag>;
       },
     },
@@ -244,8 +263,28 @@ const PermissionPage: React.FC = () => {
       title: '父级',
       dataIndex: 'parentCode',
       key: 'parentCode',
-      width: 120,
-      render: (text: string) => text || <span className={styles.emptyText}>-</span>,
+      width: 220,
+      ellipsis: true,
+      render: (parentCode: string) => {
+        if (!parentCode) return <span className={styles.emptyText}>-</span>;
+        const parent = data.find((p) => p.code === parentCode);
+        const label = parent ? `${parent.name}（${parentCode}）` : parentCode;
+        return (
+          <Tooltip title={label}>
+            <span
+              style={{
+                display: 'block',
+                maxWidth: 200,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {label}
+            </span>
+          </Tooltip>
+        );
+      },
     },
     {
       title: '排序',
@@ -539,63 +578,55 @@ const PermissionTreeView: React.FC<PermissionTreeViewProps> = ({ onEdit, onDelet
     loadPermissions();
   }, [selectedProject, refreshKey]);
 
-  // 构建分组卡片数据：一级菜单 -> 二级页面 -> 三级操作
-  // 同时支持游离的权限（没有完整层级结构的权限）
   const buildGroupedCards = () => {
     const menuMap = new Map<string, { menu: Permission; pages: Map<string, { page: Permission; actions: Permission[] }> }>();
     const codeMap = new Map<string, Permission>();
+    const selectedProjectData = projects.find(p => p.code === selectedProject);
+    const projectSystems = selectedProjectData?.systems || [];
     
-    // 先建立 code -> permission 映射
     permissions.forEach(perm => codeMap.set(perm.code, perm));
 
-    // 找出所有一级菜单
-    permissions.filter(p => p.type === 'MENU' && !p.parentCode).forEach(menu => {
-      menuMap.set(menu.code, { menu, pages: new Map() });
+    projectSystems.forEach(system => {
+      const virtualMenu: Permission = {
+        id: -1,
+        code: system.code,
+        name: system.name,
+        systemCode: system.code,
+        type: 'MENU',
+        status: 'ENABLED',
+        projectId: selectedProject,
+      };
+      menuMap.set(system.code, { menu: virtualMenu, pages: new Map() });
     });
 
-    // 找出所有二级页面，归属到对应菜单
-    permissions.filter(p => p.type === 'PAGE').forEach(page => {
-      // 找父级菜单
-      let parentCode = page.parentCode;
-      while (parentCode) {
-        const parent = codeMap.get(parentCode);
-        if (parent?.type === 'MENU') {
-          if (menuMap.has(parentCode)) {
-            menuMap.get(parentCode)!.pages.set(page.code, { page, actions: [] });
-          }
-          break;
-        }
-        parentCode = parent?.parentCode;
-      }
-    });
-
-    // 独立页面（没有父菜单）也加到列表
-    permissions.filter(p => p.type === 'PAGE').forEach(page => {
-      const hasMenu = Array.from(menuMap.values()).some(m => m.pages.has(page.code));
-      if (!hasMenu) {
-        // 创建一个虚拟菜单
+    const ensureModule = (systemCode?: string) => {
+      const code = systemCode && menuMap.has(systemCode) ? systemCode : 'UNASSIGNED';
+      if (!menuMap.has(code)) {
         const virtualMenu: Permission = {
-          ...page,
+          id: -1,
+          code,
+          name: '未归属模块',
+          systemCode: code,
           type: 'MENU',
-          name: page.parentCode ? `${page.name}（游离页面）` : `${page.name}模块`,
-          code: `${page.code}_MODULE`,
+          status: 'ENABLED',
+          projectId: selectedProject,
         };
-        menuMap.set(virtualMenu.code, { 
-          menu: virtualMenu, 
-          pages: new Map([[page.code, { page, actions: [] }]]) 
-        });
+        menuMap.set(code, { menu: virtualMenu, pages: new Map() });
       }
+      return menuMap.get(code)!;
+    };
+
+    permissions.filter(p => p.type === 'PAGE').forEach(page => {
+      const moduleEntry = ensureModule(page.systemCode);
+      moduleEntry.pages.set(page.code, { page, actions: [] });
     });
 
-    // 找出所有三级操作，归属到对应页面
     const assignedActions = new Set<string>();
     permissions.filter(p => p.type === 'ACTION').forEach(action => {
-      // 找父级页面
       let parentCode: string | undefined = action.parentCode;
       while (parentCode) {
         const parent = codeMap.get(parentCode);
         if (parent?.type === 'PAGE') {
-          // 遍历所有菜单，找到包含这个页面的
           const pageCode = parentCode;
           menuMap.forEach(m => {
             if (m.pages.has(pageCode)) {
@@ -609,15 +640,11 @@ const PermissionTreeView: React.FC<PermissionTreeViewProps> = ({ onEdit, onDelet
       }
     });
 
-    // 处理游离的操作（没有父页面的 ACTION）
     const orphanActions = permissions.filter(p => p.type === 'ACTION' && !assignedActions.has(p.code));
     if (orphanActions.length > 0) {
-      // 创建一个统一的"游离权限"模块，包含所有游离操作
-      const virtualMenuCode = 'VIRTUAL_ORPHAN_MODULE';
-      const orphanPages = new Map<string, { page: Permission; actions: Permission[] }>();
-      
       orphanActions.forEach(action => {
-        const virtualPageCode = `VIRTUAL_PAGE_${action.code}`;
+        const moduleEntry = ensureModule(action.systemCode);
+        const virtualPageCode = `ORPHAN_PAGE_${action.code}`;
         const virtualPage: Permission = {
           ...action,
           id: -1,
@@ -626,20 +653,7 @@ const PermissionTreeView: React.FC<PermissionTreeViewProps> = ({ onEdit, onDelet
           code: virtualPageCode,
           parentCode: undefined,
         };
-        orphanPages.set(virtualPageCode, { page: virtualPage, actions: [action] });
-      });
-      
-      const virtualMenu: Permission = {
-        id: -1,
-        code: virtualMenuCode,
-        name: '游离权限',
-        systemCode: '',
-        type: 'MENU',
-        status: 'ENABLED',
-      };
-      menuMap.set(virtualMenuCode, {
-        menu: virtualMenu,
-        pages: orphanPages,
+        moduleEntry.pages.set(virtualPageCode, { page: virtualPage, actions: [action] });
       });
     }
 
@@ -659,9 +673,14 @@ const PermissionTreeView: React.FC<PermissionTreeViewProps> = ({ onEdit, onDelet
   // 当前选中的模块
   const [selectedModule, setSelectedModule] = useState<string>('');
 
-  // 初始化默认选中第一个模块
   useEffect(() => {
-    if (!selectedModule && moduleList.length > 0) {
+    if (moduleList.length === 0) {
+      if (selectedModule) {
+        setSelectedModule('');
+      }
+      return;
+    }
+    if (!selectedModule || !moduleList.some(item => item.code === selectedModule)) {
       setSelectedModule(moduleList[0].code);
     }
   }, [selectedModule, moduleList]);
@@ -738,9 +757,9 @@ const PermissionTreeView: React.FC<PermissionTreeViewProps> = ({ onEdit, onDelet
         </div>
       ) : loading ? (
         <div style={{ textAlign: 'center', padding: 40 }}>加载中...</div>
-      ) : permissions.length === 0 ? (
+      ) : moduleList.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
-          该项目暂无权限数据，请先创建
+          该项目未配置系统模块，请先到项目管理中配置
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 16, minHeight: 500 }}>

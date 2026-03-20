@@ -29,14 +29,14 @@ public class PermissionController {
 
     @Operation(summary = "新增权限点")
     @PostMapping
-    @RequirePermission("PERMISSION_CREATE")
+    @RequirePermission("PERMISSION_CENTER_PERMISSION_CREATE")
     public ApiResponse<PermissionVO> create(@RequestBody @Valid CreatePermissionDTO dto) {
         return ApiResponse.success(permissionManager.createPermission(dto));
     }
 
     @Operation(summary = "编辑权限点")
     @PostMapping("/{id}/update")
-    @RequirePermission("PERMISSION_UPDATE")
+    @RequirePermission("PERMISSION_CENTER_PERMISSION_EDIT")
     public ApiResponse<PermissionVO> update(@PathVariable Long id,
                                              @RequestBody @Valid UpdatePermissionDTO dto) {
         return ApiResponse.success(permissionManager.updatePermission(id, dto));
@@ -44,7 +44,7 @@ public class PermissionController {
 
     @Operation(summary = "删除权限点")
     @PostMapping("/{id}/delete")
-    @RequirePermission("PERMISSION_DELETE")
+    @RequirePermission("PERMISSION_CENTER_PERMISSION_DELETE")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         permissionManager.deletePermission(id);
         return ApiResponse.success();
@@ -52,7 +52,7 @@ public class PermissionController {
 
     @Operation(summary = "查询权限点列表（分页）")
     @GetMapping
-    @RequirePermission("PERMISSION_VIEW")
+    @RequirePermission("PERMISSION_CENTER_PERMISSION_VIEW")
     public ApiResponse<PageResult<PermissionVO>> list(
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String name,
@@ -70,7 +70,7 @@ public class PermissionController {
 
     @Operation(summary = "查询权限树")
     @GetMapping("/tree")
-    @RequirePermission("PERMISSION_VIEW")
+    @RequirePermission("PERMISSION_CENTER_PERMISSION_VIEW")
     public ApiResponse<List<PermissionTreeVO>> tree(
             @RequestParam(required = false) String projectId) {
         // 如果传了 projectId，使用项目隔离查询
@@ -82,7 +82,7 @@ public class PermissionController {
 
     @Operation(summary = "查询所有权限点（下拉选择用）")
     @GetMapping("/all")
-    @RequirePermission("PERMISSION_VIEW")
+    @RequirePermission("PERMISSION_CENTER_PERMISSION_VIEW")
     public ApiResponse<List<PermissionVO>> listAll(
             @RequestParam(required = false) String projectId) {
         // 如果传了 projectId，使用项目隔离查询

@@ -11,7 +11,9 @@ import com.permission.common.exception.BusinessException;
 import com.permission.common.exception.ErrorCode;
 import com.permission.common.result.PageResult;
 import com.permission.dal.dataobject.PermissionDO;
+import com.permission.dal.dataobject.ProjectDO;
 import com.permission.service.PermissionService;
+import com.permission.service.ProjectService;
 import com.permission.service.RolePermissionService;
 import com.permission.service.UserPermissionService;
 import com.permission.biz.converter.PermissionWebConverter;
@@ -39,6 +41,7 @@ public class PermissionManagerImpl implements PermissionManager {
     private final PermissionService permissionService;
     private final RolePermissionService rolePermissionService;
     private final UserPermissionService userPermissionService;
+    private final ProjectService projectService;
 
     @Override
     @AuditLog(module = "PERMISSION", action = "CREATE", targetType = "permission")
@@ -168,6 +171,10 @@ public class PermissionManagerImpl implements PermissionManager {
         pageSize = (pageSize == null || pageSize < 1) ? PermissionConstant.DEFAULT_PAGE_SIZE : pageSize;
         pageSize = Math.min(pageSize, PermissionConstant.MAX_PAGE_SIZE);
 
+        if (StringUtils.hasText(projectId) && !isProjectEnabled(projectId)) {
+            return PageResult.of(0L, pageNum, pageSize, List.of());
+        }
+
         Page<PermissionDO> page = new Page<>(pageNum, pageSize);
         IPage<PermissionDO> result = permissionService.pageWithProjectFilter(page, code, name, type, status, projectId);
 
@@ -183,6 +190,9 @@ public class PermissionManagerImpl implements PermissionManager {
 
     @Override
     public List<PermissionTreeVO> getPermissionTreeWithProjectFilter(String projectId) {
+        if (StringUtils.hasText(projectId) && !isProjectEnabled(projectId)) {
+            return List.of();
+        }
         List<PermissionDO> permissions = permissionService.listAllWithProjectFilter(projectId);
         // 只保留启用状态的权限点
         permissions = permissions.stream()
@@ -199,12 +209,21 @@ public class PermissionManagerImpl implements PermissionManager {
 
     @Override
     public List<PermissionVO> listAllPermissionsWithProjectFilter(String projectId) {
+        if (StringUtils.hasText(projectId) && !isProjectEnabled(projectId)) {
+            return List.of();
+        }
         List<PermissionDO> permissions = permissionService.listAllWithProjectFilter(projectId);
         // 只保留启用状态的权限点
         permissions = permissions.stream()
                 .filter(p -> CommonStatusEnum.ENABLED.getCode().equals(p.getStatus()))
                 .collect(Collectors.toList());
         return PermissionWebConverter.INSTANCE.toVOList(permissions);
+    }
+
+    /** 项目存在且为启用（未启用则不返回该项目下权限数据） */
+    private boolean isProjectEnabled(String projectCode) {
+        ProjectDO p = projectService.getByCode(projectCode);
+        return p != null && CommonStatusEnum.ENABLED.getCode().equals(p.getStatus());
     }
 
     /**

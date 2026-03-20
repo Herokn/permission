@@ -20,15 +20,13 @@ public class UserRoleServiceImpl implements UserRoleService {
 
     @Override
     public List<UserRoleDO> listByUserIdAndProjectId(String userId, String projectId) {
+        // 未带项目上下文（如菜单、多数 @RequirePermission）：合并所有项目绑定 + 全局绑定，否则项目内角色无法命中无 project 的权限点
+        if (projectId == null) {
+            return listByUserId(userId);
+        }
         LambdaQueryWrapper<UserRoleDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserRoleDO::getUserId, userId);
-        // 查询指定项目 + 全局（projectId = NULL）
-        wrapper.and(w -> {
-            w.isNull(UserRoleDO::getProjectId);
-            if (projectId != null) {
-                w.or().eq(UserRoleDO::getProjectId, projectId);
-            }
-        });
+        wrapper.and(w -> w.isNull(UserRoleDO::getProjectId).or().eq(UserRoleDO::getProjectId, projectId));
         return userRoleMapper.selectList(wrapper);
     }
 

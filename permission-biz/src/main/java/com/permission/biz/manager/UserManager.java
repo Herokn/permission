@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.permission.biz.dto.user.CreateUserDTO;
 import com.permission.biz.dto.user.UpdateUserDTO;
 import com.permission.biz.dto.user.UserQueryDTO;
+import com.permission.biz.vo.user.CreateUserResultVO;
 import com.permission.biz.vo.user.UserVO;
 
 /**
@@ -24,7 +25,7 @@ public interface UserManager {
     /**
      * 创建用户
      */
-    UserVO createUser(CreateUserDTO dto);
+    CreateUserResultVO createUser(CreateUserDTO dto);
 
     /**
      * 更新用户
@@ -45,4 +46,9 @@ public interface UserManager {
      * 删除用户
      */
     void deleteUser(String userId);
+
+    /**
+     * 重置密码
+     */
+    String resetPassword(String userId, String newPassword);
 }

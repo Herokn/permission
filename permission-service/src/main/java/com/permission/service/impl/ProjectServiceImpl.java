@@ -51,7 +51,7 @@ public class ProjectServiceImpl implements ProjectService {
     public List<ProjectDO> listByStatus(String status) {
         return projectMapper.selectList(new LambdaQueryWrapper<ProjectDO>()
                 .eq(ProjectDO::getStatus, status)
-                .orderByAsc(ProjectDO::getCode));
+                .last("ORDER BY CASE code WHEN 'UC' THEN 0 WHEN 'PC' THEN 1 ELSE 99 END, id ASC"));
     }
 
     @Override

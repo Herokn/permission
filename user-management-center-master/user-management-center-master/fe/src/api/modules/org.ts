@@ -1,145 +1,220 @@
 import { ucsApi } from './_preset'
 
-export async function queryAllUcOrgs_Api(params: {
-  tenantId: number
-  parentId: number
-}): Promise<any[]> {
-  const r = await ucsApi.post(
-    { url: '/api/ucOrg/queryAllUcOrgs', data: params },
-    { isReturnNativeResponse: true, isTransformResponse: false }
-  )
-  const body = (r as any)?.data || {}
-  const ok =
-    body &&
-    typeof body === 'object' &&
-    (body.success === true || body.code === 2000 || body.code === 0)
-  if (!ok) throw new Error(String(body.message || body.msg || '请求失败'))
-  return Array.isArray(body?.data) ? body.data : []
-}
-
-export async function queryAllUcOrgPositions(params: {
-  tenantId: number
-  orgId: number
-}): Promise<any[]> {
-  const r = await ucsApi.post(
-    { url: '/api/ucOrgPosition/queryAllUcOrgPositions', data: params },
-    { isReturnNativeResponse: true, isTransformResponse: false }
-  )
-  const body = (r as any)?.data || {}
-  const ok =
-    body &&
-    typeof body === 'object' &&
-    (body.success === true || body.code === 2000 || body.code === 0)
-  if (!ok)
-    throw new Error(String(body.message || body.msg || 'Server request failed'))
-  return Array.isArray(body?.data) ? body.data : []
-}
-
-export async function listPositionsWithOrgFlag_Api(params: {
-  orgId: number
-}): Promise<any[]> {
+/**
+ * 查询组织树
+ */
+export async function getOrgTree_Api(status?: number): Promise<any[]> {
   const r = await ucsApi.get(
-    { url: '/api/ucOrgPosition/listPositionsWithOrgFlag', params },
+    {
+      url: '/organizations/tree',
+      params: status !== undefined ? { status } : {},
+    },
     { isReturnNativeResponse: true, isTransformResponse: false }
   )
   const body = (r as any)?.data || {}
-  const ok =
-    body &&
-    typeof body === 'object' &&
-    (body.success === true || body.code === 2000 || body.code === 0)
-  if (!ok)
-    throw new Error(String(body.message || body.msg || 'Server request failed'))
+  const ok = body && typeof body === 'object' && body.code === 200
+  if (!ok) throw new Error(String(body.message || '请求失败'))
   return Array.isArray(body?.data) ? body.data : []
 }
 
-export async function queryUcOrgPositionsByOrgId(
+/**
+ * 查询组织详情
+ */
+export async function getOrgDetail_Api(orgId: number): Promise<any> {
+  const r = await ucsApi.get(
+    { url: `/organizations/${orgId}` },
+    { isReturnNativeResponse: true, isTransformResponse: false }
+  )
+  const body = (r as any)?.data || {}
+  const ok = body && typeof body === 'object' && body.code === 200
+  if (!ok) throw new Error(String(body.message || '请求失败'))
+  return body.data
+}
+
+/**
+ * 创建组织
+ */
+export async function addOrg_Api(data: {
+  orgCode: string
+  orgName: string
+  orgType: string
+  parentId?: number
+}): Promise<any> {
+  const r = await ucsApi.post(
+    { url: '/organizations', data },
+    { isReturnNativeResponse: true, isTransformResponse: false }
+  )
+  const body = (r as any)?.data || {}
+  const ok = body && typeof body === 'object' && body.code === 200
+  if (!ok) throw new Error(String(body.message || '请求失败'))
+  return body.data
+}
+
+/**
+ * 修改组织
+ */
+export async function modifyOrgById_Api(
   orgId: number,
-  signal?: AbortSignal
-): Promise<any[]> {
-  const r = await ucsApi.get(
-    { url: '/api/ucOrgPosition/queryByOrgId', params: { orgId }, signal },
+  data: {
+    orgCode?: string
+    orgName?: string
+    orgType?: string
+    status?: number
+  }
+): Promise<any> {
+  const r = await ucsApi.put(
+    { url: `/organizations/${orgId}`, data },
     { isReturnNativeResponse: true, isTransformResponse: false }
   )
   const body = (r as any)?.data || {}
-  const ok =
-    body &&
-    typeof body === 'object' &&
-    (body.success === true || body.code === 2000 || body.code === 0)
-  if (!ok)
-    throw new Error(String(body.message || body.msg || 'Server request failed'))
+  const ok = body && typeof body === 'object' && body.code === 200
+  if (!ok) throw new Error(String(body.message || '请求失败'))
+  return body.data
+}
+
+/**
+ * 配置组织岗位
+ */
+export async function configOrgPositions_Api(params: {
+  orgId: number
+  positionIds: number[]
+}): Promise<any> {
+  const r = await ucsApi.post(
+    { url: `/organizations/${params.orgId}/positions`, data: params.positionIds },
+    { isReturnNativeResponse: true, isTransformResponse: false }
+  )
+  const body = (r as any)?.data || {}
+  const ok = body && typeof body === 'object' && body.code === 200
+  if (!ok) throw new Error(String(body.message || '请求失败'))
+  return body.data
+}
+
+/**
+ * 查询岗位列表
+ */
+export async function queryPositions_Api(orgId?: number): Promise<any[]> {
+  const r = await ucsApi.get(
+    {
+      url: '/positions',
+      params: orgId ? { orgId } : {},
+    },
+    { isReturnNativeResponse: true, isTransformResponse: false }
+  )
+  const body = (r as any)?.data || {}
+  const ok = body && typeof body === 'object' && body.code === 200
+  if (!ok) throw new Error(String(body.message || '请求失败'))
   return Array.isArray(body?.data) ? body.data : []
 }
-interface IAddUcOrg_Api {
-  id?: number
-  orgCode?: string
-  orgName?: string
-  orgType?: string
-  status?: string
-  parentId: number
-}
-//修改组织结构
-export async function modifyUcOrgById_Api(data: IAddUcOrg_Api): Promise<any> {
+
+/**
+ * 创建岗位
+ */
+export async function addPosition_Api(data: {
+  positionCode: string
+  positionName: string
+  level?: number
+  description?: string
+}): Promise<any> {
   const r = await ucsApi.post(
-    { url: '/api/ucOrg/modifyUcOrgById', data },
+    { url: '/positions', data },
     { isReturnNativeResponse: true, isTransformResponse: false }
   )
   const body = (r as any)?.data || {}
-  const ok =
-    body &&
-    typeof body === 'object' &&
-    (body.success === true || body.code === 2000 || body.code === 0)
-  if (!ok)
-    throw new Error(String(body.message || body.msg || 'Server request failed'))
-  return body?.data
+  const ok = body && typeof body === 'object' && body.code === 200
+  if (!ok) throw new Error(String(body.message || '请求失败'))
+  return body.data
 }
 
-//新增组织机构
-export async function addUcOrg_Api(data: IAddUcOrg_Api): Promise<any> {
-  const r = await ucsApi.post(
-    { url: '/api/ucOrg/addUcOrg', data },
+/**
+ * 修改岗位
+ */
+export async function modifyPositionById_Api(
+  positionId: number,
+  data: {
+    positionCode?: string
+    positionName?: string
+    level?: number
+    description?: string
+  }
+): Promise<any> {
+  const r = await ucsApi.put(
+    { url: `/positions/${positionId}`, data },
     { isReturnNativeResponse: true, isTransformResponse: false }
   )
   const body = (r as any)?.data || {}
-  const ok =
-    body &&
-    typeof body === 'object' &&
-    (body.success === true || body.code === 2000 || body.code === 0)
-  if (!ok)
-    throw new Error(String(body.message || body.msg || 'Server request failed'))
-  return body?.data
+  const ok = body && typeof body === 'object' && body.code === 200
+  if (!ok) throw new Error(String(body.message || '请求失败'))
+  return body.data
 }
 
-//组织结构树
-export async function getOrgTree_Api(): Promise<any> {
-  const r = await ucsApi.get(
-    { url: '/api/ucOrg/queryOrgTree' },
+/**
+ * 删除岗位
+ */
+export async function deletePosition_Api(positionId: number): Promise<boolean> {
+  const r = await ucsApi.delete(
+    { url: `/positions/${positionId}` },
     { isReturnNativeResponse: true, isTransformResponse: false }
   )
   const body = (r as any)?.data || {}
-  const ok =
-    body &&
-    typeof body === 'object' &&
-    (body.success === true || body.code === 2000 || body.code === 0)
-  if (!ok)
-    throw new Error(String(body.message || body.msg || 'Server request failed'))
-  return body?.data
+  const ok = body && typeof body === 'object' && body.code === 200
+  if (!ok) throw new Error(String(body.message || '请求失败'))
+  return true
 }
 
-//批量更新组织与岗位的关系
+/**
+ * 查询组织的岗位列表（兼容旧接口）
+ */
+export async function queryUcOrgPositionsByOrgId(orgId: number): Promise<any[]> {
+  return queryPositions_Api(orgId)
+}
+
+/**
+ * 查询所有组织（兼容旧接口）
+ */
+export async function queryAllUcOrgs_Api(): Promise<any[]> {
+  return getOrgTree_Api()
+}
+
+/**
+ * 修改组织（兼容旧接口）
+ */
+export async function modifyUcOrgById_Api(
+  orgId: number,
+  data: {
+    orgCode?: string
+    orgName?: string
+    orgType?: string
+    status?: number
+  }
+): Promise<any> {
+  return modifyOrgById_Api(orgId, data)
+}
+
+/**
+ * 批量更新组织岗位
+ */
 export async function batchUpdateOrgPositions_Api(params: {
   orgId: number
   positionIds: number[]
-}): Promise<any[]> {
-  const r = await ucsApi.post(
-    { url: '/api/ucOrgPosition/batchUpdateOrgPositions', data: params },
-    { isReturnNativeResponse: true, isTransformResponse: false }
-  )
-  const body = (r as any)?.data || {}
-  const ok =
-    body &&
-    typeof body === 'object' &&
-    (body.success === true || body.code === 2000 || body.code === 0)
-  if (!ok)
-    throw new Error(String(body.message || body.msg || 'Server request failed'))
-  return Array.isArray(body?.data) ? body.data : []
+}): Promise<any> {
+  return configOrgPositions_Api(params)
+}
+
+/**
+ * 添加组织（兼容旧接口）
+ */
+export async function addUcOrg_Api(data: {
+  orgCode: string
+  orgName: string
+  orgType: string
+  parentId?: number
+}): Promise<any> {
+  return addOrg_Api(data)
+}
+
+/**
+ * 列出带组织标志的岗位
+ */
+export async function listPositionsWithOrgFlag_Api(): Promise<any[]> {
+  return queryPositions_Api()
 }

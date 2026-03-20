@@ -12,6 +12,12 @@ public class UserQueryDTO {
 
     private Integer pageSize = 10;
 
+    /** 模糊：登录账号 */
+    private String loginAccount;
+
+    /** 模糊：业务用户ID */
+    private String userId;
+
     private String displayName;
 
     private String mobile;
@@ -20,5 +26,9 @@ public class UserQueryDTO {
 
     private Integer status;
 
+    /** 主组织 */
     private Long orgId;
+
+    /** 岗位 */
+    private Long positionId;
 }

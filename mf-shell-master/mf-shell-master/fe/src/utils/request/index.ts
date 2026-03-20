@@ -235,6 +235,13 @@ const transform: AxiosTransform = {
       return Promise.reject(error)
     }
 
+    // 处理403权限不足错误
+    if (response?.status === 403) {
+      const message = response?.data?.message || '无权限访问此资源'
+      MessagePlugin.warning(message)
+      return Promise.reject(error)
+    }
+
     if (!config || !config.requestOptions.retry) return Promise.reject(error)
 
     config.retryCount = config.retryCount || 0

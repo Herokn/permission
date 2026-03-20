@@ -2,12 +2,14 @@ import { useState, useCallback, useEffect } from 'react';
 import { message } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { login as loginApi, logout as logoutApi, getCurrentUser } from '@/services/api';
-import { setUserInfo, clearAuth, getUserInfo, emitTokenChanged } from '@/utils/request';
+import { setUserInfo, clearAuth, getUserInfo, emitTokenChanged, safeRedirect } from '@/utils/request';
 import type { UserInfo, LoginRequest } from '@/types';
 
 interface UseAuthReturn {
   user: UserInfo | null;
   isAuthenticated: boolean;
+  /** 已从服务端同步过当前用户（或确认无本地缓存），布局可据此再做无权限跳转 */
+  hydrated: boolean;
   loading: boolean;
   login: (data: LoginRequest) => Promise<void>;
   logout: () => Promise<void>;
@@ -19,14 +21,13 @@ export const useAuth = (): UseAuthReturn => {
   const [user, setUser] = useState<UserInfo | null>(() => getUserInfo() as UserInfo | null);
   const [isAuthed, setIsAuthed] = useState(() => !!getUserInfo());
   const [loading, setLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const handleTokenChange = () => {
-      const userInfo = getUserInfo();
+      const userInfo = getUserInfo() as UserInfo | null;
       setIsAuthed(!!userInfo);
-      if (!userInfo) {
-        setUser(null);
-      }
+      setUser(userInfo);
     };
 
     window.addEventListener('auth:token-changed', handleTokenChange);
@@ -48,6 +49,21 @@ export const useAuth = (): UseAuthReturn => {
     }
   }, []);
 
+  /** 进入受保护布局后拉取最新权限，避免仅角色变更后仍使用登录时的旧 sessionStorage */
+  useEffect(() => {
+    if (!getUserInfo()) {
+      setHydrated(true);
+      return;
+    }
+    let cancelled = false;
+    void fetchUser().finally(() => {
+      if (!cancelled) setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchUser]);
+
   const login = useCallback(async (data: LoginRequest) => {
     setLoading(true);
     try {
@@ -63,8 +79,15 @@ export const useAuth = (): UseAuthReturn => {
       setIsAuthed(true);
       
       message.success('登录成功');
-      
+
       emitTokenChanged();
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect') || sessionStorage.getItem('post_login_redirect');
+      if (redirect) {
+        sessionStorage.removeItem('post_login_redirect');
+        safeRedirect(redirect);
+        return;
+      }
       
       setTimeout(() => {
         navigate('/', { replace: true });
@@ -95,6 +118,7 @@ export const useAuth = (): UseAuthReturn => {
   return {
     user,
     isAuthenticated: isAuthed,
+    hydrated,
     loading,
     login,
     logout,

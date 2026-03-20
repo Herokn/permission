@@ -1,18 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Result, Button, Spin } from 'antd';
-import { isAuthenticated } from '@/utils/request';
 import { getCurrentUser } from '@/services/api';
-import { clearAuth } from '@/utils/request';
+import { isAuthenticated, clearAuth, setUserInfo, emitTokenChanged } from '@/utils/request';
 
 const TOKEN_CHANGED_EVENT = 'auth:token-changed';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredPermission?: string;  // 可选的权限编码
+  /** 精确匹配某一权限点 */
+  requiredPermission?: string;
+  /** 任一以此前缀开头的权限点即通过（用于用户中心多子能力） */
+  requiredPermissionPrefix?: string;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredPermission }) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  requiredPermission,
+  requiredPermissionPrefix,
+}) => {
   const location = useLocation();
   const [authenticated, setAuthenticated] = useState(false);
   const [hasPermission, setHasPermission] = useState(true);
@@ -36,13 +42,24 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredPermi
         const res = await getCurrentUser();
         if (mounted) {
           setAuthenticated(true);
-          
+          if (res.data) {
+            setUserInfo(res.data);
+            emitTokenChanged();
+          }
+
           // 如果需要权限校验
           if (requiredPermission) {
             const userInfo = res.data;
             const permissions = userInfo?.permissions || [];
             const isAdmin = userInfo?.admin || false;
             setHasPermission(isAdmin || permissions.includes(requiredPermission));
+          } else if (requiredPermissionPrefix) {
+            // 检查是否有任一匹配前缀的权限
+            const userInfo = res.data;
+            const permissions = userInfo?.permissions || [];
+            const isAdmin = userInfo?.admin || false;
+            const hasPrefixPermission = permissions.some(p => p.startsWith(requiredPermissionPrefix));
+            setHasPermission(isAdmin || hasPrefixPermission);
           } else {
             setHasPermission(true);
           }
@@ -72,7 +89,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredPermi
       mounted = false;
       window.removeEventListener(TOKEN_CHANGED_EVENT, handleTokenChange);
     };
-  }, [requiredPermission]);
+  }, [requiredPermission, requiredPermissionPrefix]);
 
   if (checking) {
     return (
@@ -90,8 +107,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredPermi
     return (
       <Result
         status="403"
-        title="403"
-        subTitle="抱歉，您没有权限访问此页面"
+        title="无权访问该功能"
+        subTitle={
+          <span style={{ maxWidth: 440, display: 'inline-block', textAlign: 'left' }}>
+            您已登录，但缺少访问本页所需的权限点。若应拥有该能力，请联系管理员调整角色授权后重新登录。
+          </span>
+        }
         extra={
           <Button type="primary" onClick={() => window.history.back()}>
             返回上一页

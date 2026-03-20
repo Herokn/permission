@@ -11,13 +11,13 @@ import java.time.LocalDateTime;
 public class OrganizationVO {
 
     private Long id;
-    private String code;
-    private String name;
+    private String orgCode;
+    private String orgName;
+    private String orgType;
     private Long parentId;
-    private Integer sortOrder;
-    private String status;
-    private String description;
+    private Integer level;
+    private String path;
+    private Integer status;
     private LocalDateTime gmtCreate;
     private LocalDateTime gmtModified;
 }
-

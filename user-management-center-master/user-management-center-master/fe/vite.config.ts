@@ -73,7 +73,7 @@ export default defineConfig(({ command, mode }: ConfigEnv): UserConfig => {
     },
     server: {
       hmr: true,
-      host: true,
+      host: '0.0.0.0',
       port,
       watch: { usePolling: true },
       proxy: serverProxy,

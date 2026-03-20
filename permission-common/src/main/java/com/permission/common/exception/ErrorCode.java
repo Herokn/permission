@@ -32,13 +32,15 @@ public enum ErrorCode {
     USER_ROLE_NOT_FOUND("142202", "用户角色关系不存在"),
     USER_PERMISSION_EXISTS("142203", "该授权记录已存在"),
     USER_PERMISSION_NOT_FOUND("142204", "用户权限记录不存在"),
-    GLOBAL_ROLE_NO_PROJECT("142205", "全局角色不支持指定项目"),
+    GLOBAL_ROLE_NO_PROJECT("142205", "全局角色（如系统管理员）分配时不要传 projectId；仅项目角色需传所属项目编码"),
 
     // ==================== 项目相关 ====================
     PROJECT_NOT_FOUND("142211", "项目不存在"),
     PROJECT_CODE_EXISTS("142212", "项目编码已存在：%s"),
     PROJECT_USED_BY_USER_ROLE("142213", "该项目已被用户角色引用"),
     PROJECT_USED_BY_USER_PERMISSION("142214", "该项目已被用户权限引用"),
+    PROJECT_PROTECTED("142215", "系统内置项目不可删除：%s"),
+    PROJECT_DISABLED("142216", "项目已停用，无法进行授权操作"),
 
     // ==================== 组织权限相关 ====================
     ORG_CODE_EXISTS("142301", "组织编码已存在：%s"),
@@ -63,7 +65,16 @@ public enum ErrorCode {
     SSO_AUTH_FAILED("143006", "SSO认证失败"),
     TOKEN_EXPIRED("143007", "Token已过期"),
     TOKEN_INVALID("143008", "Token无效"),
-    UNAUTHORIZED("143009", "未登录或登录已过期");
+    UNAUTHORIZED("143009", "未登录或登录已过期"),
+    TOO_MANY_REQUESTS("143010", "请求过于频繁，请稍后重试"),
+
+    // ==================== 用户管理相关 ====================
+    USER_NOT_FOUND("142401", "用户不存在"),
+    USER_ID_EXISTS("142402", "用户ID已存在"),
+    MOBILE_EXISTS("142403", "手机号已被使用"),
+    EMAIL_EXISTS("142404", "邮箱已被使用"),
+    LOGIN_ACCOUNT_EXISTS("142405", "登录账号已被使用"),
+    RESERVED_LOGIN_ACCOUNT("142406", "该登录账号为系统保留，不可使用");
 
     private final String code;
     private final String message;

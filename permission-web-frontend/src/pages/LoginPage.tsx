@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Card, Typography, Space } from 'antd';
 import { UserOutlined, LockOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useAuth } from '@/hooks/useAuth';
+import { isSafeRedirectUrl } from '@/utils/request';
 import type { LoginRequest } from '@/types';
 import styles from './LoginPage.module.css';
 
@@ -14,6 +15,11 @@ const LoginPage: React.FC = () => {
 
   useEffect(() => {
     setMounted(true);
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get('redirect');
+    if (redirect && isSafeRedirectUrl(redirect)) {
+      sessionStorage.setItem('post_login_redirect', redirect);
+    }
   }, []);
 
   const handleSubmit = async (values: LoginRequest) => {

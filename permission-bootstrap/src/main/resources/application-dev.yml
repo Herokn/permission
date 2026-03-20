@@ -34,10 +34,17 @@ management:
 
 auth:
   jwt:
-    secret: dev-jwt-secret-key-for-development-only-at-least-64-characters-long-please-replace-in-production
+    secret: ${JWT_SECRET:dev-jwt-secret-key-for-development-only-at-least-64-characters-long-please-replace-in-production}
   users:
-    admin: "$2b$12$lSq62um1wy0aBVs27V3HRuxTQtpFt/DImVKkq/Po68eP1NR6gYcwa"
-    user1: "$2b$12$BqdLlkaBFh9Lel1piDRp/.yvVZv.bYpOwff4PcgNAPbdiqvDVUSdq"
+    admin: ${AUTH_ADMIN_PASSWORD:$2b$12$lSq62um1wy0aBVs27V3HRuxTQtpFt/DImVKkq/Po68eP1NR6gYcwa}
+    user1: ${AUTH_USER1_PASSWORD:$2b$12$BqdLlkaBFh9Lel1piDRp/.yvVZv.bYpOwff4PcgNAPbdiqvDVUSdq}
+    testuser002: ${AUTH_TESTUSER002_PASSWORD:$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3.iW8jY9D6aV3xV9xK2S}
+    user_center_admin: ${AUTH_USER_CENTER_ADMIN_PASSWORD:$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3.iW8jY9D6aV3xV9xK2S}
+    org_admin: ${AUTH_ORG_ADMIN_PASSWORD:$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3.iW8jY9D6aV3xV9xK2S}
+    user_viewer: ${AUTH_USER_VIEWER_PASSWORD:$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3.iW8jY9D6aV3xV9xK2S}
+    user_org_manager: ${AUTH_USER_ORG_MANAGER_PASSWORD:$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3.iW8jY9D6aV3xV9xK2S}
+    perm_center_admin: ${AUTH_PERM_CENTER_ADMIN_PASSWORD:$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3.iW8jY9D6aV3xV9xK2S}
+    normal_user: ${AUTH_NORMAL_USER_PASSWORD:$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3.iW8jY9D6aV3xV9xK2S}
 
 cors:
   allowed-origins: http://localhost:3000,http://localhost:5173
@@ -47,4 +54,4 @@ cookie:
   same-site: Lax
 
 permission:
-  super-admins: admin
+  super-admins: sys_admin,admin

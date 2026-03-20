@@ -1,19 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import MainLayout from '@/layouts/MainLayout';
 import LoginPage from '@/pages/LoginPage';
+import HomeRedirect from '@/pages/HomeRedirect';
+import NoAccessPage from '@/pages/NoAccessPage';
 import PermissionPage from '@/pages/PermissionPage.tsx';
+import ProjectPage from '@/pages/ProjectPage';
 import RolePage from '@/pages/RolePage';
 import UserGrantPage from '@/pages/UserGrantPage';
-import AuthzTestPage from '@/pages/AuthzTestPage';
-import ProjectPage from '@/pages/ProjectPage';
-import { isAuthenticated } from '@/utils/request';
+import AuditLogPage from '@/pages/AuditLogPage';
+import UserCenterUserPage from '@/pages/user-center/UserCenterUserPage';
+import OrganizationPage from '@/pages/user-center/OrganizationPage';
+import PositionPage from '@/pages/user-center/PositionPage';
+import { isAuthenticated, safeRedirect } from '@/utils/request';
 
 const TOKEN_CHANGED_EVENT = 'auth:token-changed';
+
+const LoginEntry: React.FC<{ authed: boolean }> = ({ authed }) => {
+  const location = useLocation();
+  if (!authed) {
+    return <LoginPage />;
+  }
+  const redirect = new URLSearchParams(location.search).get('redirect');
+  if (redirect) {
+    safeRedirect(redirect);
+    return null;
+  }
+  return <Navigate to="/" replace />;
+};
 
 const App: React.FC = () => {
   const [authed, setAuthed] = useState(isAuthenticated());
@@ -22,10 +40,10 @@ const App: React.FC = () => {
     const handleAuthChange = () => {
       setAuthed(isAuthenticated());
     };
-    
+
     handleAuthChange();
     window.addEventListener(TOKEN_CHANGED_EVENT, handleAuthChange);
-    
+
     return () => {
       window.removeEventListener(TOKEN_CHANGED_EVENT, handleAuthChange);
     };
@@ -36,10 +54,7 @@ const App: React.FC = () => {
       <ConfigProvider locale={zhCN}>
         <BrowserRouter>
           <Routes>
-            <Route
-              path="/login"
-              element={authed ? <Navigate to="/" replace /> : <LoginPage />}
-            />
+            <Route path="/login" element={<LoginEntry authed={authed} />} />
             <Route
               path="/"
               element={
@@ -48,33 +63,75 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Navigate to="/projects" replace />} />
-              <Route path="projects" element={<ProjectPage />} />
-              <Route 
-                path="permissions" 
+              <Route index element={<HomeRedirect />} />
+              <Route path="no-access" element={<NoAccessPage />} />
+
+              <Route
+                path="user-center/users"
                 element={
-                  <ProtectedRoute requiredPermission="PERMISSION_MANAGE">
+                  <ProtectedRoute requiredPermissionPrefix="USER_CENTER_USER_">
+                    <UserCenterUserPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="user-center/organizations"
+                element={
+                  <ProtectedRoute requiredPermissionPrefix="USER_CENTER_ORG_">
+                    <OrganizationPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="user-center/positions"
+                element={
+                  <ProtectedRoute requiredPermissionPrefix="USER_CENTER_POSITION_">
+                    <PositionPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="user-center" element={<Navigate to="/user-center/users" replace />} />
+
+              <Route
+                path="permission-center/projects"
+                element={
+                  <ProtectedRoute requiredPermission="PERMISSION_CENTER_PROJECT_VIEW">
+                    <ProjectPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="permission-center/permissions"
+                element={
+                  <ProtectedRoute requiredPermission="PERMISSION_CENTER_PERMISSION_VIEW">
                     <PermissionPage />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="roles" 
+              <Route
+                path="permission-center/roles"
                 element={
-                  <ProtectedRoute requiredPermission="ROLE_MANAGE">
+                  <ProtectedRoute requiredPermission="PERMISSION_CENTER_ROLE_VIEW">
                     <RolePage />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="users" 
+              <Route
+                path="permission-center/user-grants"
                 element={
-                  <ProtectedRoute requiredPermission="USER_AUTH_MANAGE">
+                  <ProtectedRoute requiredPermission="PERMISSION_CENTER_USER_GRANT_VIEW">
                     <UserGrantPage />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route path="authz-test" element={<AuthzTestPage />} />
+              <Route
+                path="permission-center/audit-logs"
+                element={
+                  <ProtectedRoute requiredPermission="PERMISSION_CENTER_AUDIT_VIEW">
+                    <AuditLogPage />
+                  </ProtectedRoute>
+                }
+              />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -2,6 +2,7 @@ package com.permission.test.biz.manager.impl;
 
 import com.permission.biz.manager.impl.RoleManagerImpl;
 import com.permission.common.enums.CommonStatusEnum;
+import com.permission.common.enums.RoleDomainEnum;
 import com.permission.common.exception.BusinessException;
 import com.permission.dal.dataobject.PermissionDO;
 import com.permission.dal.dataobject.RoleDO;
@@ -204,6 +205,58 @@ class RoleManagerImplTest extends BaseTest {
         assertEquals("ADMIN", result.getCode());
         assertEquals(2, result.getPermissionCodes().size());
         assertTrue(result.getPermissionCodes().contains("ORDER_VIEW"));
+    }
+
+    @Test
+    @DisplayName("用户授权-UC 列表含全局与 UC 项目角色，不含权限中心管理员")
+    void testListAllRolesForGrantContext_UC() {
+        RoleDO superR = buildRoleDO("SUPER_ADMIN", "GLOBAL", "APP", null);
+        RoleDO ucAdmin = buildRoleDO("USER_CENTER_ADMIN", "PROJECT", "APP", "UC");
+        RoleDO permPc = buildRoleDO("PERM_CENTER_ADMIN", "PROJECT", RoleDomainEnum.PERM_CENTER.getCode(), "PC");
+        RoleDO permOrphan = buildRoleDO("PERM_ORPHAN", "PROJECT", RoleDomainEnum.PERM_CENTER.getCode(), null);
+        RoleDO permWrongUc = buildRoleDO("PERM_CENTER_ADMIN", "PROJECT", RoleDomainEnum.PERM_CENTER.getCode(), "UC");
+        when(roleService.listByStatus(CommonStatusEnum.ENABLED.getCode()))
+                .thenReturn(List.of(superR, ucAdmin, permPc, permOrphan, permWrongUc));
+
+        List<RoleVO> list = roleManager.listAllRolesForGrantContext("UC");
+
+        assertTrue(list.stream().anyMatch(r -> "SUPER_ADMIN".equals(r.getCode())));
+        assertTrue(list.stream().anyMatch(r -> "USER_CENTER_ADMIN".equals(r.getCode())));
+        assertFalse(list.stream().anyMatch(r -> "PERM_CENTER_ADMIN".equals(r.getCode())));
+        assertFalse(list.stream().anyMatch(r -> "PERM_ORPHAN".equals(r.getCode())));
+    }
+
+    @Test
+    @DisplayName("用户授权-误标为 GLOBAL 的 PERM_CENTER_ADMIN 不应出现在 UC")
+    void testListAllRolesForGrantContext_GlobalPermCenterAdminHiddenOnUC() {
+        RoleDO badGlobal = buildRoleDO("PERM_CENTER_ADMIN", "GLOBAL", RoleDomainEnum.PERM_CENTER.getCode(), null);
+        when(roleService.listByStatus(CommonStatusEnum.ENABLED.getCode())).thenReturn(List.of(badGlobal));
+
+        assertTrue(roleManager.listAllRolesForGrantContext("UC").isEmpty());
+        assertEquals(1, roleManager.listAllRolesForGrantContext("PC").size());
+    }
+
+    @Test
+    @DisplayName("用户授权-PC 列表含权限中心管理员（绑定 PC）")
+    void testListAllRolesForGrantContext_PC() {
+        RoleDO superR = buildRoleDO("SUPER_ADMIN", "GLOBAL", "APP", null);
+        RoleDO permPc = buildRoleDO("PERM_CENTER_ADMIN", "PROJECT", RoleDomainEnum.PERM_CENTER.getCode(), "PC");
+        when(roleService.listByStatus(CommonStatusEnum.ENABLED.getCode())).thenReturn(List.of(superR, permPc));
+
+        List<RoleVO> list = roleManager.listAllRolesForGrantContext("PC");
+
+        assertTrue(list.stream().anyMatch(r -> "PERM_CENTER_ADMIN".equals(r.getCode())));
+    }
+
+    private static RoleDO buildRoleDO(String code, String scope, String domain, String projectId) {
+        RoleDO r = new RoleDO();
+        r.setCode(code);
+        r.setName(code);
+        r.setRoleScope(scope);
+        r.setRoleDomain(domain);
+        r.setProjectId(projectId);
+        r.setStatus(CommonStatusEnum.ENABLED.getCode());
+        return r;
     }
 }
 

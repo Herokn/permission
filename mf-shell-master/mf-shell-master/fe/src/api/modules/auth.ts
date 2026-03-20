@@ -1,6 +1,10 @@
 import { request } from '@/utils/request'
 
-export function login(payload: { username: string; password: string }) {
+export function login(payload: {
+  username: string
+  password: string
+  projectId?: string
+}) {
   // 对接 Node 服务端的 SSO 代理登录接口
   // 注意：需要确保请求路径包含 VITE_API_URL_PREFIX (/mf-shell/api)
   // request 工具通常会自动拼接前缀，但取决于配置。
@@ -15,11 +19,25 @@ export function login(payload: { username: string; password: string }) {
   // 假设默认开启了 isJoinPrefix，且 urlPrefix 是 VITE_API_URL_PREFIX (/mf-shell/api)
   // 那么最终请求就是 /mf-shell/api/auth/sso/login -> proxy -> http://localhost:4130/api/auth/sso/login
 
-  return request.post({ url: '/auth/sso/login', data: payload })
+  return request.post({ url: '/auth/login', data: payload })
+}
+
+export function loginByPermissionSession(projectId: string = 'P1') {
+  return request.post({
+    url: '/auth/login/by-permission-session',
+    data: { projectId },
+  })
 }
 
 export function getUserInfo() {
   return request.get({ url: '/auth/me' })
+}
+
+export function getAuthorizedSystems(projectId?: string) {
+  return request.get({
+    url: '/auth/systems',
+    params: projectId ? { projectId } : undefined,
+  })
 }
 
 export async function logout() {

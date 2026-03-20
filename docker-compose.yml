@@ -1,3 +1,7 @@
+# 后端：由根目录 Dockerfile 在镜像内执行 Maven 打包（mvn clean package），本机无需安装 mvn。
+# 构建：docker compose build backend
+# 启动：docker compose up -d（首次会拉镜像并构建）
+# 数据库：首次启动 MySQL 空数据卷时自动执行 docker/mysql/01-load-full.sh 导入 init_full.sql
 services:
   mysql:
     image: mysql:8.0.34
@@ -12,6 +16,9 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      # 完整初始化（仅空库执行一次）；init 脚本见 docker/mysql/01-load-full.sh
+      - ./permission-bootstrap/src/main/resources/db/init_full.sql:/init-full.sql:ro
+      - ./docker/mysql/01-load-full.sh:/docker-entrypoint-initdb.d/01-load-full.sh:ro
     command: --default-authentication-plugin=mysql_native_password
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
@@ -52,8 +59,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      SPRING_FLYWAY_ENABLED: "true"
-      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      # 与 application.yml 一致：使用 init_full.sql 初始化，不用 Flyway
+      SPRING_FLYWAY_ENABLED: "false"
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       AUTH_ADMIN_PASS: ${AUTH_ADMIN_PASS:-}
       AUTH_USER1_PASS: ${AUTH_USER1_PASS:-}

@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 用户信息 VO
@@ -23,6 +24,9 @@ public class UserInfoVO {
 
     @Schema(description = "用户权限编码列表")
     private List<String> permissions;
+
+    @Schema(description = "可访问的模块列表")
+    private Set<String> modules;
 
     @Schema(description = "是否为超级管理员")
     private boolean admin;

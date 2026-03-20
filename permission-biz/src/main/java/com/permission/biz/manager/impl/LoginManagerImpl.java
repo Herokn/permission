@@ -1,5 +1,7 @@
 package com.permission.biz.manager.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.permission.biz.config.AuthUsersConfig;
 import com.permission.biz.dto.auth.LoginDTO;
 import com.permission.biz.dto.auth.RefreshTokenDTO;
 import com.permission.biz.dto.auth.SsoLoginDTO;
@@ -14,12 +16,14 @@ import com.permission.common.exception.BusinessException;
 import com.permission.common.exception.ErrorCode;
 import com.permission.common.util.JwtUtil;
 import com.permission.dal.dataobject.LoginSessionDO;
+import com.permission.dal.dataobject.UserDO;
+import com.permission.dal.mapper.UserMapper;
 import com.permission.service.AuthzService;
 import com.permission.service.LoginSessionService;
 import com.permission.service.PasswordService;
+import com.permission.service.RateLimitService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -27,7 +31,6 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -40,28 +43,36 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class LoginManagerImpl implements LoginManager {
 
+    private static final int USER_TYPE_BUSINESS = 0;
+
     private final LoginSessionService loginSessionService;
     private final JwtUtil jwtUtil;
     private final PasswordService passwordService;
     private final AuthzService authzService;
     private final PermissionConfig permissionConfig;
+    private final AuthUsersConfig authUsersConfig;
+    private final RateLimitService rateLimitService;
+    private final UserMapper userMapper;
 
-    @Value("${auth.users.admin:}")
-    private String adminPassword;
-
-    @Value("${auth.users.user1:}")
-    private String user1Password;
+    private static final int MAX_LOGIN_ATTEMPTS = 5;
+    private static final int LOGIN_WINDOW_SECONDS = 300;
 
     private Map<String, String> configuredUsers;
 
     @jakarta.annotation.PostConstruct
     public void init() {
         configuredUsers = new HashMap<>();
-        if (StringUtils.hasText(adminPassword)) {
-            configuredUsers.put("admin", encodeIfNeeded(adminPassword));
-        }
-        if (StringUtils.hasText(user1Password)) {
-            configuredUsers.put("user1", encodeIfNeeded(user1Password));
+
+        Map<String, String> authUsersMap = authUsersConfig.getUsers();
+        if (authUsersMap != null) {
+            for (Map.Entry<String, String> entry : authUsersMap.entrySet()) {
+                String username = entry.getKey();
+                String pwd = entry.getValue();
+                if (StringUtils.hasText(username) && StringUtils.hasText(pwd)) {
+                    configuredUsers.put(username, encodeIfNeeded(pwd));
+                    log.debug("加载预配置用户: {}", username);
+                }
+            }
         }
         log.info("已加载 {} 个预配置用户", configuredUsers.size());
     }
@@ -76,27 +87,35 @@ public class LoginManagerImpl implements LoginManager {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public LoginVO login(LoginDTO dto) {
-        String userName = dto.getUserName();
+        String loginAccount = dto.getUserName();
         String password = dto.getPassword();
 
-        if (!validatePassword(userName, password)) {
+        if (!rateLimitService.allowLogin(loginAccount, MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW_SECONDS)) {
+            long remaining = rateLimitService.getRemainingTime(loginAccount);
+            throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS,
+                    "登录尝试次数过多，请 " + remaining + " 秒后重试");
+        }
+
+        String jwtUserId = resolveAuthenticatedUser(loginAccount, password);
+        if (jwtUserId == null) {
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
 
+        rateLimitService.reset(loginAccount);
+
         String sessionId = UUID.randomUUID().toString();
-        String userId = generateUserId(userName);
 
         long now = System.currentTimeMillis();
         long expiresAt = now + jwtUtil.getDefaultAccessTokenExpireMillis();
         long refreshExpiresAt = now + jwtUtil.getDefaultRefreshTokenExpireMillis();
 
-        String accessToken = jwtUtil.generateAccessToken(userId, sessionId, expiresAt);
-        String refreshToken = jwtUtil.generateRefreshToken(userId, sessionId, refreshExpiresAt);
+        String accessToken = jwtUtil.generateAccessToken(jwtUserId, sessionId, expiresAt);
+        String refreshToken = jwtUtil.generateRefreshToken(jwtUserId, sessionId, refreshExpiresAt);
 
         LoginSessionDO session = new LoginSessionDO();
         session.setSessionId(sessionId);
-        session.setUserId(userId);
-        session.setUserName(userName);
+        session.setUserId(jwtUserId);
+        session.setUserName(loginAccount);
         session.setLoginType(LoginTypeEnum.PASSWORD.getCode());
         session.setAccessToken(accessToken);
         session.setRefreshToken(refreshToken);
@@ -108,6 +127,43 @@ public class LoginManagerImpl implements LoginManager {
         loginSessionService.save(session);
 
         return buildLoginVO(session);
+    }
+
+    /**
+     * 配置账号：JWT 业务 userId 固定为 sys_{loginAccount}，与登录账号分离（如 admin → sys_admin）。
+     * 业务用户：JWT subject 为表 user.user_id（服务端生成）。
+     */
+    private static String configuredAccountToUserId(String loginAccount) {
+        return "sys_" + loginAccount;
+    }
+
+    private String resolveAuthenticatedUser(String loginAccount, String password) {
+        String encoded = configuredUsers.get(loginAccount);
+        if (encoded != null) {
+            if (passwordService.matches(password, encoded)) {
+                return configuredAccountToUserId(loginAccount);
+            }
+            log.warn("密码校验失败(配置用户): {}", loginAccount);
+            return null;
+        }
+
+        UserDO u = userMapper.selectOne(
+                new LambdaQueryWrapper<UserDO>()
+                        .eq(UserDO::getLoginAccount, loginAccount)
+                        .eq(UserDO::getUserType, USER_TYPE_BUSINESS)
+        );
+        if (u == null) {
+            log.warn("用户不存在: {}", loginAccount);
+            return null;
+        }
+        if (u.getStatus() != null && u.getStatus() != 1) {
+            throw new BusinessException(ErrorCode.USER_DISABLED);
+        }
+        if (!StringUtils.hasText(u.getPasswordHash()) || !passwordService.matches(password, u.getPasswordHash())) {
+            log.warn("密码校验失败(业务用户): {}", loginAccount);
+            return null;
+        }
+        return u.getUserId();
     }
 
     @Override
@@ -185,33 +241,7 @@ public class LoginManagerImpl implements LoginManager {
             throw new BusinessException(ErrorCode.SESSION_REVOKED);
         }
 
-        UserInfoVO vo = new UserInfoVO();
-        vo.setUserId(session.getUserId());
-        vo.setUserName(session.getUserName());
-        vo.setLoginType(session.getLoginType());
-        vo.setAdmin(permissionConfig.isSuperAdmin(session.getUserId()));
-
-        Set<String> permissions = authzService.getUserPermissionCodes(session.getUserId(), null);
-        vo.setPermissions(permissions.stream().toList());
-
-        return vo;
-    }
-
-    private boolean validatePassword(String userName, String password) {
-        String encodedPassword = configuredUsers.get(userName);
-        if (encodedPassword == null) {
-            log.warn("用户不存在: {}", userName);
-            return false;
-        }
-        boolean result = passwordService.matches(password, encodedPassword);
-        if (!result) {
-            log.warn("密码校验失败: {}", userName);
-        }
-        return result;
-    }
-
-    private String generateUserId(String userName) {
-        return userName;
+        return buildUserInfo(session);
     }
 
     private LoginVO buildLoginVO(LoginSessionDO session) {
@@ -222,15 +252,51 @@ public class LoginManagerImpl implements LoginManager {
         vo.setExpiresAt(session.getExpiresAt().atZone(ZoneId.systemDefault()).toEpochSecond());
         vo.setRefreshExpiresAt(session.getRefreshExpiresAt().atZone(ZoneId.systemDefault()).toEpochSecond());
 
+        UserInfoVO userInfo = buildUserInfo(session);
+        vo.setUserInfo(userInfo);
+        return vo;
+    }
+
+    private UserInfoVO buildUserInfo(LoginSessionDO session) {
         UserInfoVO userInfo = new UserInfoVO();
         userInfo.setUserId(session.getUserId());
         userInfo.setUserName(session.getUserName());
         userInfo.setLoginType(session.getLoginType());
         userInfo.setAdmin(permissionConfig.isSuperAdmin(session.getUserId()));
+
         Set<String> permissions = authzService.getUserPermissionCodes(session.getUserId(), null);
         userInfo.setPermissions(permissions.stream().toList());
-        vo.setUserInfo(userInfo);
-        return vo;
+        userInfo.setModules(calculateModules(permissions, userInfo.isAdmin()));
+
+        return userInfo;
+    }
+
+    private Set<String> calculateModules(Set<String> permissions, boolean superAdmin) {
+        Set<String> modules = new java.util.HashSet<>();
+        if (superAdmin) {
+            modules.add("user-center");
+            modules.add("permission-center");
+            return modules;
+        }
+        boolean uc = permissions.stream().anyMatch(p ->
+                p.startsWith("USER_CENTER") || "SYS_USER_MANAGEMENT_ACCESS".equals(p));
+        if (uc) {
+            modules.add("user-center");
+        }
+        boolean pc = permissions.stream().anyMatch(LoginManagerImpl::isPermissionCenterPermission);
+        if (pc) {
+            modules.add("permission-center");
+        }
+        return modules;
+    }
+
+    private static boolean isPermissionCenterPermission(String p) {
+        return p.startsWith("PERMISSION_CENTER")
+                || p.startsWith("ROLE_")
+                || p.startsWith("USER_AUTH_")
+                || p.startsWith("PERMISSION_MANAGE")
+                || p.startsWith("PERM_CENTER")
+                || p.equals("PERMISSION_MANAGE");
     }
 
     private String buildSsoAuthUrl(String redirectUri) {

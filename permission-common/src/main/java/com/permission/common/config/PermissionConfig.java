@@ -7,7 +7,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -23,7 +22,7 @@ public class PermissionConfig {
     /**
      * 超级管理员用户ID列表（逗号分隔）
      */
-    private String superAdmins = "admin";
+    private String superAdmins = "sys_admin,admin";
 
     /**
      * 组织层级最大深度，防止循环引用导致无限递归
@@ -32,9 +31,9 @@ public class PermissionConfig {
     private int orgMaxDepth = 20;
 
     /**
-     * 解析后的超级管理员集合（缓存）
+     * 解析后的超级管理员集合：含 sys_{login} 与历史 JWT sub=admin 兼容
      */
-    private Set<String> superAdminSet = Collections.singleton("admin");
+    private Set<String> superAdminSet = Set.of("sys_admin", "admin");
 
     public int getOrgMaxDepth() {
         return orgMaxDepth;
@@ -64,7 +63,7 @@ public class PermissionConfig {
      * 获取超级管理员集合
      */
     public Set<String> getSuperAdminSet() {
-        return Collections.unmodifiableSet(superAdminSet);
+        return Set.copyOf(superAdminSet);
     }
 
     @PostConstruct

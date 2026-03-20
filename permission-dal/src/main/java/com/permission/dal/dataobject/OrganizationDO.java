@@ -16,22 +16,25 @@ public class OrganizationDO {
     private Long id;
 
     /** 组织编码 */
-    private String code;
+    private String orgCode;
 
     /** 组织名称 */
-    private String name;
+    private String orgName;
+
+    /** 组织类型：COMPANY/DEPARTMENT/TEAM */
+    private String orgType;
 
     /** 父组织ID */
     private Long parentId;
 
-    /** 排序号 */
-    private Integer sortOrder;
+    /** 层级 */
+    private Integer level;
 
-    /** 状态：ENABLED/DISABLED */
-    private String status;
+    /** 路径 */
+    private String path;
 
-    /** 描述 */
-    private String description;
+    /** 状态：1=启用, 0=禁用 */
+    private Integer status;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime gmtCreate;

@@ -26,7 +26,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     @Override
     public OrganizationDO getByCode(String code) {
         LambdaQueryWrapper<OrganizationDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(OrganizationDO::getCode, code);
+        wrapper.eq(OrganizationDO::getOrgCode, code);
         return organizationMapper.selectOne(wrapper);
     }
 

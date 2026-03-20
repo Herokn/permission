@@ -2,8 +2,9 @@ import { defineStore } from 'pinia'
 import {
   getUserInfo as queryUserInfo,
   login as Login,
+  loginByPermissionSession as LoginByPermissionSession,
   logout as Logout,
-  getUserPermissions,
+  getAuthorizedSystems,
 } from '@/api/modules/auth'
 import { usePermissionStore } from '@/stores'
 import { LoginParams } from '@/types/api/auth'
@@ -32,6 +33,7 @@ export const useUserStore = defineStore('user', {
     authenticationScheme: '', // 'Bearer', // 认证方案，默认Bearer
     userInfo: { ...InitUserInfo },
     systemList: [] as any[], // 系统权限列表
+    activeProjectId: 'P1',
   }),
   getters: {
     roles: (state) => {
@@ -58,6 +60,15 @@ export const useUserStore = defineStore('user', {
         this.userInfo.username = data?.username
         this.userInfo.nickName = data?.username // 暂时用 username 作为 nickName
       }
+      if (data.userId) {
+        this.userInfo.userId = data.userId
+      }
+      const selectedProjectId =
+        loginParams.projectId ||
+        data.projectId ||
+        this.activeProjectId ||
+        'P1'
+      this.activeProjectId = selectedProjectId
 
       // 存储 SSO Session ID (用于登出)
       if (data?.ssoSessionId) {
@@ -65,8 +76,26 @@ export const useUserStore = defineStore('user', {
       }
 
       // 登录成功后，立即获取权限
-      await this.fetchSystemPermissions()
+      await this.fetchSystemPermissions(selectedProjectId)
 
+      return response
+    },
+    async loginByPermissionSession(projectId: string = 'P1') {
+      const response = await LoginByPermissionSession(projectId)
+      const data = response?.data || {}
+      const tokenType = data?.tokenType || 'Bearer'
+      const accessToken = data?.accessToken || ''
+      this.token = accessToken ? `${tokenType} ${accessToken}` : ''
+      this.authenticationScheme = tokenType
+      if (data.username) {
+        this.userInfo.username = data?.username
+        this.userInfo.nickName = data?.username
+      }
+      if (data.userId) {
+        this.userInfo.userId = data.userId
+      }
+      this.activeProjectId = projectId || data.projectId || 'P1'
+      await this.fetchSystemPermissions(this.activeProjectId)
       return response
     },
     async getUserInfo() {
@@ -77,8 +106,10 @@ export const useUserStore = defineStore('user', {
      * 获取系统权限列表（第一层权限）
      * 登录后调用，获取用户有权限的所有系统
      */
-    async fetchSystemPermissions() {
+    async fetchSystemPermissions(projectId?: string) {
       if (!this.token) return
+      const targetProjectId = projectId || this.activeProjectId || 'P1'
+      this.activeProjectId = targetProjectId
 
       // Mock 系统列表（开发环境或接口不可用时使用）
       const mockSystems = [
@@ -98,24 +129,19 @@ export const useUserStore = defineStore('user', {
         },
       ]
 
-      // 开发环境直接使用 mock 数据，避免等待接口超时
-      if (import.meta.env.DEV) {
-        console.log('[fetchSystemPermissions] DEV mode, using mock systems')
-        this.systemList = mockSystems
-        const permissionStore = usePermissionStore()
-        permissionStore.setSystemList(mockSystems)
-        return
-      }
-
       try {
-        const res = await getUserPermissions('')
+        const res = await getAuthorizedSystems(targetProjectId)
         console.log('[fetchSystemPermissions] 接口返回数据:', res)
 
-        if (res?.data && Array.isArray(res.data)) {
-          this.systemList = res.data
+        if (Array.isArray(res)) {
+          this.systemList = res
           const permissionStore = usePermissionStore()
-          permissionStore.setSystemList(res.data)
+          permissionStore.setSystemList(res)
+          return
         }
+        this.systemList = []
+        const permissionStore = usePermissionStore()
+        permissionStore.setSystemList([])
       } catch (e) {
         console.error('Fetch system permissions failed, using mock data', e)
         this.systemList = mockSystems
@@ -138,6 +164,7 @@ export const useUserStore = defineStore('user', {
       this.token = ''
       this.userInfo = { ...InitUserInfo }
       this.systemList = []
+      this.activeProjectId = 'P1'
       localStorage.clear()
     },
   },
@@ -152,6 +179,12 @@ export const useUserStore = defineStore('user', {
       }
     },
     key: 'user',
-    paths: ['token', 'authenticationScheme', 'userInfo', 'systemList'],
+    paths: [
+      'token',
+      'authenticationScheme',
+      'userInfo',
+      'systemList',
+      'activeProjectId',
+    ],
   },
 })

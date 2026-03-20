@@ -63,11 +63,10 @@ const AuthzTestPage: React.FC = () => {
 
   // 预设测试用例
   const testCases = [
-    { userId: currentUserId, permissionCode: 'ORDER_VIEW', projectId: 'P1', description: `${currentUserId}在P1查看订单` },
-    { userId: currentUserId, permissionCode: 'ORDER_CREATE', projectId: 'P1', description: `${currentUserId}在P1创建订单` },
-    { userId: currentUserId, permissionCode: 'ORDER_APPROVE', projectId: 'P1', description: `${currentUserId}在P1审批订单` },
-    { userId: currentUserId, permissionCode: 'ORDER_APPROVE', projectId: 'P2', description: `${currentUserId}在P2审批订单` },
-    { userId: currentUserId, permissionCode: 'ORDER_VIEW', projectId: '', description: `${currentUserId}全局查看订单` },
+    { userId: currentUserId, permissionCode: 'USER_CENTER_USER_VIEW', projectId: 'UC', description: `${currentUserId} 在用户中心项目下查看用户` },
+    { userId: currentUserId, permissionCode: 'USER_CENTER_USER_VIEW', projectId: '', description: `${currentUserId} 全局 USER_CENTER_USER_VIEW` },
+    { userId: currentUserId, permissionCode: 'PERMISSION_CENTER_ROLE_VIEW', projectId: '', description: `${currentUserId} 查看角色（权限中心）` },
+    { userId: currentUserId, permissionCode: 'USER_CENTER_USER_CREATE', projectId: 'UC', description: `${currentUserId} 在 UC 下创建用户` },
   ];
 
   const handleTestCase = (testCase: typeof testCases[0]) => {
@@ -119,7 +118,7 @@ const AuthzTestPage: React.FC = () => {
             rules={[{ required: true, message: '请输入权限编码' }]}
           >
             <Input 
-              placeholder="如：ORDER_VIEW、ORDER_CREATE" 
+              placeholder="如：USER_CENTER_USER_VIEW、PERMISSION_CENTER_ROLE_VIEW" 
               prefix={<ThunderboltOutlined />}
               size="large"
             />
@@ -131,7 +130,7 @@ const AuthzTestPage: React.FC = () => {
             extra="留空表示全局权限"
           >
             <Input 
-              placeholder="如：P1、P2（可选）" 
+              placeholder="如：UC、PC（可选，留空为全局）" 
               allowClear
               size="large"
             />

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 3032",
     "build": "vite build --mode ${MODE:-production} && tsx build/script/postBuild.ts --mode ${MODE:-production}",
     "build:clean": "rm -rf dist node_modules/.vite && pnpm run build",
     "build:lib": "LIB_BUILD=1 vite build",

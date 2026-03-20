@@ -17,11 +17,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    baseline-version: 0
-    validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:false}
+    enabled: false
 
   data:
     redis:
@@ -46,14 +42,15 @@ mybatis-plus:
     map-underscore-to-camel-case: true
 
 swagger:
-  enabled: ${SWAGGER_ENABLED:true}
+  # 生产勿开启；本地可设 SWAGGER_ENABLED=true 或激活 dev 配置
+  enabled: ${SWAGGER_ENABLED:false}
 
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
   api-docs:
     path: /v3/api-docs
-    enabled: ${SWAGGER_ENABLED:true}
+    enabled: ${SWAGGER_ENABLED:false}
 
 management:
   endpoints:
@@ -62,7 +59,8 @@ management:
         include: ${ACTUATOR_ENDPOINTS:health,info}
   endpoint:
     health:
-      show-details: ${ACTUATOR_HEALTH_SHOW_DETAILS:never}
+      # 未认证仅看状态；认证后可看详情（生产可改为 always 并配合网关鉴权）
+      show-details: ${ACTUATOR_HEALTH_SHOW_DETAILS:when_authorized}
   info:
     env:
       enabled: true
@@ -91,9 +89,11 @@ cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
 
 cookie:
+  # 仅 HTTPS 部署请设 COOKIE_SECURE=true；生产可激活 spring.profiles.active=prod
   secure: ${COOKIE_SECURE:false}
   same-site: ${COOKIE_SAME_SITE:Lax}
 
 permission:
-  super-admins: ${PERMISSION_SUPER_ADMINS:admin}
+  # 兼容旧 JWT（sub=admin）与新版（sub=sys_admin）；重新登录后一般为 sys_admin
+  super-admins: ${PERMISSION_SUPER_ADMINS:sys_admin,admin}
   org-max-depth: ${PERMISSION_ORG_MAX_DEPTH:20}

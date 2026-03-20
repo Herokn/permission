@@ -36,6 +36,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -225,6 +226,52 @@ public class RoleManagerImpl implements RoleManager {
     public List<RoleVO> listAllRoles() {
         List<RoleDO> allRoles = roleService.listByStatus(CommonStatusEnum.ENABLED.getCode());
         return RoleWebConverter.INSTANCE.toVOList(allRoles);
+    }
+
+    @Override
+    public List<RoleVO> listAllRolesForGrantContext(String projectCode) {
+        if (!StringUtils.hasText(projectCode)) {
+            return List.of();
+        }
+        final String pc = projectCode.trim();
+        List<RoleDO> all = roleService.listByStatus(CommonStatusEnum.ENABLED.getCode());
+        return all.stream()
+                .filter(r -> visibleInUserGrantContext(r, pc))
+                .sorted(Comparator.comparing(RoleDO::getCode, Comparator.nullsLast(String::compareTo)))
+                .map(RoleWebConverter.INSTANCE::toVO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 用户授权页按项目选角色：禁止「project_id 为空的项目角色」混入 UC（旧查询用 OR null 会把权限中心管理员等带进来）。
+     */
+    private boolean visibleInUserGrantContext(RoleDO r, String projectCode) {
+        if (RoleScopeEnum.GLOBAL.getCode().equals(r.getRoleScope())) {
+            // 历史数据可能把 PERM_CENTER_ADMIN 标成 GLOBAL：仍应在「用户中心」上下文中隐藏
+            if ("PERM_CENTER_ADMIN".equals(r.getCode())) {
+                return "PC".equals(projectCode);
+            }
+            String gd = StringUtils.hasText(r.getRoleDomain()) ? r.getRoleDomain() : RoleDomainEnum.APP.getCode();
+            if (RoleDomainEnum.PERM_CENTER.getCode().equals(gd)) {
+                return "PC".equals(projectCode);
+            }
+            return true;
+        }
+        if (!RoleScopeEnum.PROJECT.getCode().equals(r.getRoleScope())) {
+            return false;
+        }
+        String bound = r.getProjectId() != null ? r.getProjectId().trim() : "";
+        if (!StringUtils.hasText(bound)) {
+            return false;
+        }
+        if (!projectCode.equals(bound)) {
+            return false;
+        }
+        String domain = StringUtils.hasText(r.getRoleDomain()) ? r.getRoleDomain() : RoleDomainEnum.APP.getCode();
+        if (RoleDomainEnum.PERM_CENTER.getCode().equals(domain) || "PERM_CENTER_ADMIN".equals(r.getCode())) {
+            return "PC".equals(projectCode);
+        }
+        return true;
     }
 }
 

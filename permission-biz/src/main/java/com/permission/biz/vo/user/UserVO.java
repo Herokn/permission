@@ -1,5 +1,6 @@
 package com.permission.biz.vo.user;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 /**
@@ -11,6 +12,8 @@ public class UserVO {
     private Long id;
 
     private String userId;
+
+    private String loginAccount;
 
     private String displayName;
 
@@ -24,6 +27,7 @@ public class UserVO {
 
     private Integer status;
 
+    @JsonProperty("orgId")
     private Long primaryOrgId;
 
     private String primaryOrgName;

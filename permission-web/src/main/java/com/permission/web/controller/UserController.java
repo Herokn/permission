@@ -5,6 +5,7 @@ import com.permission.biz.dto.user.CreateUserDTO;
 import com.permission.biz.dto.user.UpdateUserDTO;
 import com.permission.biz.dto.user.UserQueryDTO;
 import com.permission.biz.manager.UserManager;
+import com.permission.biz.vo.user.CreateUserResultVO;
 import com.permission.biz.vo.user.UserVO;
 import com.permission.common.annotation.RequirePermission;
 import com.permission.common.result.ApiResponse;
@@ -20,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Tag(name = "用户管理")
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -49,7 +50,7 @@ public class UserController {
     @Operation(summary = "创建用户")
     @PostMapping
     @RequirePermission("USER_CENTER_USER_CREATE")
-    public ApiResponse<UserVO> createUser(@RequestBody @Valid CreateUserDTO dto) {
+    public ApiResponse<CreateUserResultVO> createUser(@RequestBody @Valid CreateUserDTO dto) {
         return ApiResponse.success(userManager.createUser(dto));
     }
 
@@ -85,5 +86,16 @@ public class UserController {
     public ApiResponse<Void> deleteUser(@PathVariable String userId) {
         userManager.deleteUser(userId);
         return ApiResponse.success();
+    }
+
+    @Operation(summary = "重置密码")
+    @PostMapping("/{userId}/reset-password")
+    @RequirePermission("USER_CENTER_USER_RESET_PWD")
+    public ApiResponse<String> resetPassword(
+            @PathVariable String userId,
+            @RequestParam(required = false) String newPassword
+    ) {
+        String temporaryPassword = userManager.resetPassword(userId, newPassword);
+        return ApiResponse.success(temporaryPassword);
     }
 }

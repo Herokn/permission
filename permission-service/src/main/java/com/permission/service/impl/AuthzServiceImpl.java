@@ -2,6 +2,7 @@ package com.permission.service.impl;
 
 import com.permission.common.config.PermissionConfig;
 import com.permission.common.enums.CommonStatusEnum;
+import com.permission.common.enums.PermissionEffectEnum;
 import com.permission.dal.dataobject.*;
 import com.permission.service.*;
 import com.permission.service.model.AuthzResult;
@@ -141,7 +142,7 @@ public class AuthzServiceImpl implements AuthzService {
                 if (roleIdsWithPermission.contains(String.valueOf(orgRole.getRoleId()))) {
                     RoleDO role = roleMap.get(orgRole.getRoleId());
                     OrganizationDO org = orgCache.get(orgRole.getOrgId());
-                    String orgName = org != null ? org.getName() : String.valueOf(orgRole.getOrgId());
+                    String orgName = org != null ? org.getOrgName() : String.valueOf(orgRole.getOrgId());
                     return AuthzResult.allowed("来自组织「" + orgName + "」的角色 " + role.getCode() + " 授权");
                 }
             }
@@ -234,6 +235,17 @@ public class AuthzServiceImpl implements AuthzService {
                         rolePerms.forEach(rp -> permissionCodes.add(rp.getPermissionCode()));
                     }
                 }
+            }
+        }
+
+        // 用户直接 ALLOW：与 check() 一致须生效；此前仅聚合角色/组织角色，导致授权页勾选后登录态 permissions、modules 仍为空
+        List<UserPermissionDO> directPerms = userPermissionService.listByUserId(userId);
+        for (UserPermissionDO up : directPerms) {
+            if (!PermissionEffectEnum.ALLOW.getCode().equals(up.getEffect())) {
+                continue;
+            }
+            if (projectId == null || up.getProjectId() == null || projectId.equals(up.getProjectId())) {
+                permissionCodes.add(up.getPermissionCode());
             }
         }
 

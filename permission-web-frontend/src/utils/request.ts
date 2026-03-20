@@ -1,6 +1,8 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axiosRetry from 'axios-retry';
 import { ApiResponse } from '@/types';
 import { refreshToken } from '@/services/api';
+import { decodeUserFromSession, encodeUserForSession } from '@/utils/userStorage';
 
 // Token 变化事件
 export const TOKEN_CHANGED_EVENT = 'auth:token-changed';
@@ -17,61 +19,48 @@ let refreshSubscribers: ((success: boolean) => void)[] = [];
 // 用户信息存储键（仅存储用户基本信息，Token 由 httpOnly Cookie 管理）
 const USER_INFO_KEY = 'user_info';
 
-/**
- * 订阅 Token 刷新结果
- */
 const subscribeTokenRefresh = (callback: (success: boolean) => void) => {
   refreshSubscribers.push(callback);
 };
 
-/**
- * 通知所有订阅者 Token 刷新结果
- */
 const onTokenRefreshed = (success: boolean) => {
   refreshSubscribers.forEach((callback) => callback(success));
   refreshSubscribers = [];
 };
 
-/**
- * 触发 Token 变化事件
- */
 export const emitTokenChanged = () => {
   window.dispatchEvent(new CustomEvent(TOKEN_CHANGED_EVENT));
 };
 
-/**
- * 存储用户信息
- */
 export const setUserInfo = (userInfo: unknown) => {
-  localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+  const encoded = encodeUserForSession(userInfo);
+  if (encoded) {
+    sessionStorage.setItem(USER_INFO_KEY, encoded);
+  } else {
+    sessionStorage.removeItem(USER_INFO_KEY);
+  }
 };
 
-/**
- * 获取用户信息（带校验）
- */
 export const getUserInfo = (): unknown => {
   try {
-    const info = localStorage.getItem(USER_INFO_KEY);
+    const info = sessionStorage.getItem(USER_INFO_KEY);
     if (!info) return null;
-    const parsed = JSON.parse(info);
+    const parsed = decodeUserFromSession(info);
     if (!parsed || typeof parsed !== 'object') {
       console.warn('getUserInfo: 无效的用户信息，已清除');
-      localStorage.removeItem(USER_INFO_KEY);
+      sessionStorage.removeItem(USER_INFO_KEY);
       return null;
     }
     return parsed;
   } catch (e) {
     console.warn('getUserInfo: 解析用户信息失败，已清除', e);
-    localStorage.removeItem(USER_INFO_KEY);
+    sessionStorage.removeItem(USER_INFO_KEY);
     return null;
   }
 };
 
-/**
- * 清除登录状态
- */
 export const clearAuth = () => {
-  localStorage.removeItem(USER_INFO_KEY);
+  sessionStorage.removeItem(USER_INFO_KEY);
   emitTokenChanged();
 };
 
@@ -80,6 +69,40 @@ export const clearAuth = () => {
  */
 export const isAuthenticated = (): boolean => {
   return !!getUserInfo();
+};
+
+/**
+ * 验证重定向 URL 是否安全（防止开放重定向攻击）
+ * 只允许：相对路径（/开头）或同源 URL
+ */
+export const isSafeRedirectUrl = (url: string | null): boolean => {
+  if (!url) return false;
+
+  // 允许相对路径（以 / 开头且不以 // 开头）
+  if (url.startsWith('/') && !url.startsWith('//')) {
+    return true;
+  }
+
+  try {
+    // 检查是否为同源 URL
+    const parsed = new URL(url, window.location.origin);
+    return parsed.origin === window.location.origin;
+  } catch {
+    // URL 解析失败（如以 // 开头的协议相对 URL），视为不安全
+    return false;
+  }
+};
+
+/**
+ * 执行安全跳转，如果 URL 不安全则跳转到首页
+ */
+export const safeRedirect = (url: string | null): void => {
+  if (isSafeRedirectUrl(url)) {
+    window.location.href = url!;
+  } else {
+    // URL 不安全，跳转到首页
+    window.location.href = '/';
+  }
 };
 
 /**
@@ -96,6 +119,21 @@ const createAxiosInstance = (): AxiosInstance => {
     withCredentials: true,
   });
 
+  axiosRetry(instance, {
+    retries: 2,
+    retryDelay: axiosRetry.exponentialDelay,
+    retryCondition: (error) => {
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
+        return false;
+      }
+      if (axiosRetry.isNetworkError(error)) {
+        return true;
+      }
+      return !error.response && (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT');
+    },
+  });
+
   // 响应拦截器：处理错误
   instance.interceptors.response.use(
     (response: AxiosResponse<ApiResponse>) => {
@@ -109,8 +147,24 @@ const createAxiosInstance = (): AxiosInstance => {
       return response;
     },
     async (error: AxiosError<ApiResponse>) => {
+      const requestUrl = error.config?.url || '';
+      const isRefreshRequest = requestUrl.includes('/auth/refresh');
+
       // 401 未授权，尝试静默续期
       if (error.response?.status === 401) {
+        if (isRefreshRequest) {
+          if (!isRedirectingToLogin) {
+            isRedirectingToLogin = true;
+            clearAuth();
+            const currentPath = window.location.pathname;
+            if (currentPath !== '/login') {
+              sessionStorage.setItem('redirect_after_login', currentPath);
+            }
+            safeRedirect('/login');
+          }
+          return Promise.reject(new Error('登录已过期，请重新登录'));
+        }
+
         // 如果已经在刷新 Token，等待刷新结果
         if (isRefreshing) {
           return new Promise((resolve, reject) => {
@@ -152,7 +206,7 @@ const createAxiosInstance = (): AxiosInstance => {
             if (currentPath !== '/login') {
               sessionStorage.setItem('redirect_after_login', currentPath);
             }
-            window.location.href = '/login';
+            safeRedirect('/login');
           }
           
           return Promise.reject(new Error('登录已过期，请重新登录'));

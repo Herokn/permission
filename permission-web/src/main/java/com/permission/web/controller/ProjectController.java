@@ -26,21 +26,21 @@ public class ProjectController {
 
     @PostMapping
     @Operation(summary = "新增项目")
-    @RequirePermission("PROJECT_CREATE")
+    @RequirePermission("PERMISSION_CENTER_PROJECT_CREATE")
     public ApiResponse<ProjectVO> create(@Valid @RequestBody CreateProjectDTO dto) {
         return ApiResponse.success(projectManager.createProject(dto));
     }
 
     @PostMapping("/{id}/update")
     @Operation(summary = "更新项目")
-    @RequirePermission("PROJECT_UPDATE")
+    @RequirePermission("PERMISSION_CENTER_PROJECT_EDIT")
     public ApiResponse<ProjectVO> update(@PathVariable Long id, @Valid @RequestBody UpdateProjectDTO dto) {
         return ApiResponse.success(projectManager.updateProject(id, dto));
     }
 
     @PostMapping("/{id}/delete")
     @Operation(summary = "删除项目")
-    @RequirePermission("PROJECT_DELETE")
+    @RequirePermission("PERMISSION_CENTER_PROJECT_DELETE")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         projectManager.deleteProject(id);
         return ApiResponse.success();
@@ -48,14 +48,14 @@ public class ProjectController {
 
     @GetMapping
     @Operation(summary = "查询项目列表")
-    @RequirePermission("PROJECT_VIEW")
+    @RequirePermission("PERMISSION_CENTER_PROJECT_VIEW")
     public ApiResponse<PageResult<ProjectVO>> list(ProjectQueryDTO dto) {
         return ApiResponse.success(projectManager.listProjects(dto));
     }
 
     @GetMapping("/all")
     @Operation(summary = "查询所有启用项目")
-    @RequirePermission("PROJECT_VIEW")
+    @RequirePermission("PERMISSION_CENTER_PROJECT_VIEW")
     public ApiResponse<List<ProjectVO>> listAll() {
         return ApiResponse.success(projectManager.listAllEnabled());
     }

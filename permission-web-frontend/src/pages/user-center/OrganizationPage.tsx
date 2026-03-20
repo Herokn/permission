@@ -38,10 +38,13 @@ const OrganizationPage: React.FC = () => {
   const loadTreeData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await request.get<Organization[]>('/api/organizations/tree');
-      const data = Array.isArray(response) ? response : [];
-      setTreeData(transformToTreeData(data));
-    } catch {
+      const response = await request.get('/api/organizations/tree');
+      const apiResponse = (response as any).data;
+      const rawData = apiResponse?.data || [];
+      const formattedData = transformToTreeData(Array.isArray(rawData) ? rawData : []);
+      setTreeData(formattedData);
+    } catch (error) {
+      console.error('加载组织树失败:', error);
       message.error('加载组织树失败');
     } finally {
       setLoading(false);

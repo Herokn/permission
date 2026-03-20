@@ -1,0 +1,35 @@
+-- 将已运行库中的组织/岗位权限与当前 init_full.sql 对齐：
+-- 去掉 LIST / MEMBER_MANAGE / ROLE_ASSIGN / POSITION_SEARCH 及历史 MANAGE 码。
+-- 执行（需 utf8mb4）：
+--   docker exec -i permission-mysql mysql --default-character-set=utf8mb4 -uroot -p"$DB_PASSWORD" permission < migrate_uc_org_position_simplify.sql
+
+START TRANSACTION;
+
+DELETE FROM role_permission WHERE permission_code IN (
+  'USER_CENTER_ORG_LIST',
+  'USER_CENTER_ORG_MEMBER_MANAGE',
+  'USER_CENTER_ORG_ROLE_ASSIGN',
+  'USER_CENTER_POSITION_LIST',
+  'USER_CENTER_POSITION_SEARCH',
+  'USER_CENTER_ORG_MANAGE',
+  'USER_CENTER_POSITION_MANAGE'
+);
+
+UPDATE permission SET deleted = 1, gmt_modified = NOW()
+WHERE code IN (
+  'USER_CENTER_ORG_LIST',
+  'USER_CENTER_ORG_MEMBER_MANAGE',
+  'USER_CENTER_ORG_ROLE_ASSIGN',
+  'USER_CENTER_POSITION_LIST',
+  'USER_CENTER_POSITION_SEARCH',
+  'USER_CENTER_ORG_MANAGE',
+  'USER_CENTER_POSITION_MANAGE'
+);
+
+-- 中文描述用 UTF-8 十六进制，避免 Windows 管道导入乱码
+UPDATE permission
+SET description = CONVERT(UNHEX('E7BC96E8BE91E7BB84E7BB87E58F8AE68890E59198E38081E7BB84E7BB87E8A792E889B2E7AD89E99D9EE588A0E999A4E58699E68D8DE4BD9C') USING utf8mb4),
+    gmt_modified = NOW()
+WHERE code = 'USER_CENTER_ORG_EDIT' AND deleted = 0;
+
+COMMIT;

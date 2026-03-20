@@ -1,0 +1,23 @@
+# 生产环境建议：SPRING_PROFILES_ACTIVE=prod
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+swagger:
+  enabled: false
+
+cookie:
+  secure: true
+  same-site: Strict
+
+management:
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    root: INFO
+    com.permission: INFO

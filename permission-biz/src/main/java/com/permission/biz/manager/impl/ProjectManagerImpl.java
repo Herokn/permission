@@ -28,12 +28,16 @@ import org.springframework.util.StringUtils;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ProjectManagerImpl implements ProjectManager {
+
+    /** 与前台「用户中心 / 权限中心」对应的内置项目编码，禁止删除 */
+    private static final Set<String> PROTECTED_PROJECT_CODES = Set.of("UC", "PC");
 
     private final ProjectService projectService;
     private final RoleService roleService;
@@ -152,7 +156,7 @@ public class ProjectManagerImpl implements ProjectManager {
         if (StringUtils.hasText(dto.getStatus())) {
             wrapper.eq(ProjectDO::getStatus, dto.getStatus());
         }
-        wrapper.orderByDesc(ProjectDO::getGmtCreate);
+        wrapper.last("ORDER BY CASE code WHEN 'UC' THEN 0 WHEN 'PC' THEN 1 ELSE 99 END, id ASC");
 
         Page<ProjectDO> result = projectService.page(page, wrapper);
 

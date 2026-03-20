@@ -11,10 +11,9 @@ import java.util.List;
 public class OrganizationTreeVO {
 
     private Long id;
-    private String code;
-    private String name;
-    private String status;
-    private Integer sortOrder;
+    private String orgCode;
+    private String orgName;
+    private String orgType;
+    private Integer status;
     private List<OrganizationTreeVO> children;
 }
-

@@ -57,9 +57,9 @@ class AuthzCacheServiceImplTest extends BaseTest {
     @DisplayName("checkWithCache - 缓存命中返回缓存结果")
     void testCheckWithCache_CacheHit() throws Exception {
         String userId = "user1";
-        String permissionCode = "ORDER_VIEW";
-        String projectId = "P1";
-        String key = "authz:user1:ORDER_VIEW:P1";
+        String permissionCode = "USER_CENTER_USER_VIEW";
+        String projectId = "UC";
+        String key = "authz:user1:USER_CENTER_USER_VIEW:UC";
         String cachedJson = "{\"allowed\":true,\"reason\":\"来自角色 PROJECT_MANAGER\"}";
 
         when(valueOperations.get(key)).thenReturn(cachedJson);
@@ -75,9 +75,9 @@ class AuthzCacheServiceImplTest extends BaseTest {
     @DisplayName("checkWithCache - 缓存未命中调用鉴权服务并缓存结果")
     void testCheckWithCache_CacheMiss() throws Exception {
         String userId = "user1";
-        String permissionCode = "ORDER_VIEW";
-        String projectId = "P1";
-        String key = "authz:user1:ORDER_VIEW:P1";
+        String permissionCode = "USER_CENTER_USER_VIEW";
+        String projectId = "UC";
+        String key = "authz:user1:USER_CENTER_USER_VIEW:UC";
 
         when(valueOperations.get(key)).thenReturn(null);
         when(authzService.check(userId, permissionCode, projectId))
@@ -94,9 +94,9 @@ class AuthzCacheServiceImplTest extends BaseTest {
     @DisplayName("checkWithCache - 缓存反序列化失败删除缓存并重新鉴权")
     void testCheckWithCache_InvalidCache() throws Exception {
         String userId = "user1";
-        String permissionCode = "ORDER_VIEW";
-        String projectId = "P1";
-        String key = "authz:user1:ORDER_VIEW:P1";
+        String permissionCode = "USER_CENTER_USER_VIEW";
+        String projectId = "UC";
+        String key = "authz:user1:USER_CENTER_USER_VIEW:UC";
         String invalidJson = "{invalid json";
 
         when(valueOperations.get(key)).thenReturn(invalidJson);
@@ -114,8 +114,8 @@ class AuthzCacheServiceImplTest extends BaseTest {
     @DisplayName("checkWithCache - projectId 为 null 时使用全局标识")
     void testCheckWithCache_NullProjectId() throws Exception {
         String userId = "user1";
-        String permissionCode = "USER_VIEW";
-        String key = "authz:user1:USER_VIEW:_GLOBAL_";
+        String permissionCode = "USER_CENTER_USER_VIEW";
+        String key = "authz:user1:USER_CENTER_USER_VIEW:_GLOBAL_";
 
         when(valueOperations.get(key)).thenReturn(null);
         when(authzService.check(userId, permissionCode, null))
@@ -131,9 +131,9 @@ class AuthzCacheServiceImplTest extends BaseTest {
     @DisplayName("checkWithCache - 拒绝结果缓存空值标记防止穿透")
     void testCheckWithCache_DeniedResultCachedAsNullMarker() throws Exception {
         String userId = "user1";
-        String permissionCode = "ORDER_VIEW";
-        String projectId = "P1";
-        String key = "authz:user1:ORDER_VIEW:P1";
+        String permissionCode = "USER_CENTER_USER_VIEW";
+        String projectId = "UC";
+        String key = "authz:user1:USER_CENTER_USER_VIEW:UC";
 
         // Mock 缓存未命中
         when(valueOperations.get(key)).thenReturn(null);
@@ -156,9 +156,9 @@ class AuthzCacheServiceImplTest extends BaseTest {
     @DisplayName("checkWithCache - 空值标记命中直接返回拒绝")
     void testCheckWithCache_NullMarkerHit() throws Exception {
         String userId = "user1";
-        String permissionCode = "ORDER_VIEW";
-        String projectId = "P1";
-        String key = "authz:user1:ORDER_VIEW:P1";
+        String permissionCode = "USER_CENTER_USER_VIEW";
+        String projectId = "UC";
+        String key = "authz:user1:USER_CENTER_USER_VIEW:UC";
 
         when(valueOperations.get(key)).thenReturn("__NULL__");
 
@@ -176,8 +176,8 @@ class AuthzCacheServiceImplTest extends BaseTest {
     void testEvictUser() {
         String userId = "user1";
         Set<String> keys = new HashSet<>(Arrays.asList(
-                "authz:user1:ORDER_VIEW:P1",
-                "authz:user1:USER_VIEW:_GLOBAL_"
+                "authz:user1:USER_CENTER_USER_VIEW:UC",
+                "authz:user1:USER_CENTER_USER_VIEW:_GLOBAL_"
         ));
 
         mockScanKeys("authz:user1:*", keys);
@@ -202,13 +202,13 @@ class AuthzCacheServiceImplTest extends BaseTest {
     @Test
     @DisplayName("evictPermission - 清除权限相关缓存")
     void testEvictPermission() {
-        String permissionCode = "ORDER_VIEW";
+        String permissionCode = "USER_CENTER_USER_VIEW";
         Set<String> keys = new HashSet<>(Arrays.asList(
-                "authz:user1:ORDER_VIEW:P1",
-                "authz:user2:ORDER_VIEW:P2"
+                "authz:user1:USER_CENTER_USER_VIEW:UC",
+                "authz:user2:USER_CENTER_USER_VIEW:PC"
         ));
 
-        mockScanKeys("authz:*:ORDER_VIEW:*", keys);
+        mockScanKeys("authz:*:USER_CENTER_USER_VIEW:*", keys);
 
         authzCacheService.evictPermission(permissionCode);
 
@@ -219,8 +219,8 @@ class AuthzCacheServiceImplTest extends BaseTest {
     @DisplayName("evictAll - 清除所有鉴权缓存")
     void testEvictAll() {
         Set<String> keys = new HashSet<>(Arrays.asList(
-                "authz:user1:ORDER_VIEW:P1",
-                "authz:user2:USER_VIEW:_GLOBAL_"
+                "authz:user1:USER_CENTER_USER_VIEW:UC",
+                "authz:user2:USER_CENTER_USER_VIEW:_GLOBAL_"
         ));
 
         mockScanKeys("authz:*", keys);

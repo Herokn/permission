@@ -82,6 +82,13 @@
 
       <template #operations>
         <div class="operations-container">
+          <t-select
+            class="project-select"
+            :value="selectedProjectId"
+            :options="projectOptions"
+            size="small"
+            @change="handleProjectChange"
+          />
           <!-- 搜索框 -->
           <!-- <search v-if="layout !== 'side'" :layout="layout" /> -->
 
@@ -163,7 +170,7 @@ import {
   UserCircleIcon,
 } from 'tdesign-icons-vue-next'
 import type { PropType } from 'vue'
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import LogoFull from '@/assets/imgs/header/logo.png'
@@ -218,6 +225,11 @@ const permissionStore = usePermissionStore()
 // 系统导航相关
 const MAX_VISIBLE_SYSTEMS = 8 // 最多显示8个系统，超出的放到"更多"下拉
 const currentSystem = computed(() => permissionStore.currentSystem)
+const selectedProjectId = ref(user.activeProjectId || 'P1')
+const projectOptions = [
+  { label: '项目 P1', value: 'P1' },
+  { label: '项目 P2', value: 'P2' },
+]
 const visibleSystems = computed(() => {
   const systems = user.systemList || []
   console.log('[Header] visibleSystems:', systems.slice(0, MAX_VISIBLE_SYSTEMS))
@@ -231,7 +243,8 @@ const moreSystems = computed(() => {
 onMounted(() => {
   // 页面刷新后，如果有token则获取最新权限数据
   if (user.token) {
-    user.fetchSystemPermissions()
+    selectedProjectId.value = user.activeProjectId || 'P1'
+    user.fetchSystemPermissions(selectedProjectId.value)
   }
 })
 
@@ -240,10 +253,17 @@ watch(
   () => user.token,
   (newVal) => {
     if (newVal) {
-      user.fetchSystemPermissions()
+      selectedProjectId.value = user.activeProjectId || 'P1'
+      user.fetchSystemPermissions(selectedProjectId.value)
     }
   }
 )
+
+const handleProjectChange = async (value: any) => {
+  const projectId = String(value || 'P1')
+  selectedProjectId.value = projectId
+  await user.fetchSystemPermissions(projectId)
+}
 
 // const toggleSettingPanel = () => {
 //   settingStore.updateConfig({
@@ -365,6 +385,11 @@ const handleLogout = async () => {
 .operations-container {
   display: flex;
   align-items: center;
+
+  .project-select {
+    width: 120px;
+    margin-right: 12px;
+  }
 
   .t-popup__reference {
     display: flex;

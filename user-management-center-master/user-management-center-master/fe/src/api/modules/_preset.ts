@@ -4,14 +4,14 @@
  */
 import { createApiWithOptions } from '@/utils/request/utils'
 
-/** 用户中心服务 */
+/** 用户管理服务 - 直接使用 /api 前缀，后端会处理路由 */
 export const ucsApi = createApiWithOptions({
-  isJoinPrefix: true,
-  urlPrefix: '/wb-ucs',
+  isJoinPrefix: false,
+  urlPrefix: '',
 })
 
-/** 单点登录服务 */
+/** 认证服务 - 直接使用 /api 前缀 */
 export const ssoApi = createApiWithOptions({
-  isJoinPrefix: true,
-  urlPrefix: '/wb-sso',
+  isJoinPrefix: false,
+  urlPrefix: '',
 })

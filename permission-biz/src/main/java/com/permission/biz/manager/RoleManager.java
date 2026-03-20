@@ -44,5 +44,11 @@ public interface RoleManager {
      * 查询所有角色（下拉选择用）
      */
     List<RoleVO> listAllRoles();
+
+    /**
+     * 用户授权场景：按当前项目列出可分配角色。
+     * 规则：全局角色 + 仅绑定到该项目的项目范围角色；权限中心域角色仅出现在 PC 项目。
+     */
+    List<RoleVO> listAllRolesForGrantContext(String projectCode);
 }
 

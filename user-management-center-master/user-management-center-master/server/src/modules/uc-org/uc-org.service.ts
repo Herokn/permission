@@ -1,19 +1,24 @@
 import { Injectable } from '@nestjs/common'
 
-const JSON_HEADERS = { 'Content-Type': 'application/json' }
-
 function getApiBase() {
   return process.env.SPRING_API_BASE || 'http://localhost:8080'
 }
 
-async function postJson(path: string, payload: any) {
-  const res = await fetch(`${getApiBase()}${path}`, { method: 'POST', headers: JSON_HEADERS as any, body: JSON.stringify(payload || {}) })
-  const data = await res.json()
-  return data
+async function fetchWithAuth(path: string, options: { method: string; body?: any; auth?: string }) {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (options.auth) {
+    headers['Authorization'] = options.auth
+  }
+  const res = await fetch(`${getApiBase()}${path}`, {
+    method: options.method,
+    headers,
 }
 
-@Injectable()
-export class UcOrgService {
   queryAll(payload: Record<string, any>) { return postJson('/api/ucOrg/queryAllUcOrgs', payload) }
+  queryAll(payload: Record<string, any>, auth?: string) { return getJson('/organizations/tree', {}, auth) }
+  queryTree(status?: number, auth?: string) { return getJson('/organizations/tree', status !== undefined ? { status } : {}, auth) }
+  queryDetail(orgId: number, auth?: string) { return getJson(`/organizations/${orgId}`, {}, auth) }
+  add(payload: Record<string, any>, auth?: string) { return postJson('/organizations', payload, auth) }
+  modify(orgId: number, payload: Record<string, any>, auth?: string) { return putJson(`/organizations/${orgId}`, payload, auth) }
+  configPositions(orgId: number, positionIds: number[], auth?: string) { return postJson(`/organizations/${orgId}/positions`, positionIds, auth) }
 }
-

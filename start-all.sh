@@ -1,92 +1,137 @@
-#!/bin/bash
-
-# ================================================
-# 统一权限管理平台 - 启动脚本
-# ================================================
-
-set -e
-
-# 颜色输出
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+#!/usr/bin/env bash
+set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+MODE="${1:-full}"
+RESET_DB="false"
 
-echo -e "${BLUE}"
-echo "================================================"
-echo "    统一权限管理平台 - 启动中..."
-echo "================================================"
-echo -e "${NC}"
-
-# 创建日志目录
-mkdir -p "$PROJECT_DIR/logs"
-
-# 检查后端 jar 是否存在
-JAR_FILE=$(find "$PROJECT_DIR/permission-bootstrap/target" -name "permission-bootstrap-*.jar" -type f | head -1)
-if [ -z "$JAR_FILE" ]; then
-    echo -e "${RED}✗ 未找到后端 jar 文件，请先运行 deploy.sh 进行编译${NC}"
-    exit 1
+# 检查是否需要重置数据库
+if [[ "${2:-}" == "--reset-db" ]] || [[ "${1:-}" == "--reset-db" ]]; then
+  RESET_DB="true"
 fi
 
-# 检查前端依赖是否安装
-if [ ! -d "$PROJECT_DIR/permission-web-frontend/node_modules" ]; then
-    echo -e "${YELLOW}! 前端依赖未安装，正在安装...${NC}"
-    cd "$PROJECT_DIR/permission-web-frontend"
-    npm install
-fi
-
-# 启动后端
-echo -e "${YELLOW}[1/2] 启动后端服务...${NC}"
 cd "$PROJECT_DIR"
-nohup java -jar "$JAR_FILE" > "$PROJECT_DIR/logs/backend.log" 2>&1 &
-BACKEND_PID=$!
-echo $BACKEND_PID > "$PROJECT_DIR/logs/backend.pid"
-echo -e "${GREEN}✓ 后端服务已启动 (PID: $BACKEND_PID)${NC}"
-echo -e "  日志文件: $PROJECT_DIR/logs/backend.log"
 
-# 等待后端启动
-echo -e "${YELLOW}  等待后端启动...${NC}"
-for i in {1..30}; do
-    if curl -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
-        echo -e "${GREEN}✓ 后端服务就绪${NC}"
-        break
+# 检查 .env 文件
+if [ ! -f ".env" ]; then
+  if [ -f ".env.example" ]; then
+    echo "创建 .env 文件..."
+    cp .env.example .env
+    echo "请编辑 .env 文件，设置必要的环境变量（JWT_SECRET 和 DB_PASSWORD）"
+    echo ""
+  else
+    echo "错误：找不到 .env.example 文件"
+    exit 1
+  fi
+fi
+
+# 检查 .env 文件中的必要变量
+source .env 2>/dev/null || true
+if [[ -z "${JWT_SECRET}" ]] || [[ "${JWT_SECRET}" == "your-jwt-secret-at-least-32-characters-long" ]]; then
+  echo "警告：JWT_SECRET 未设置或使用默认值"
+  echo "请生成一个安全的密钥：openssl rand -base64 32"
+  echo ""
+fi
+
+if [[ -z "${DB_PASSWORD}" ]] || [[ "${DB_PASSWORD}" == "your-database-password" ]]; then
+  echo "警告：DB_PASSWORD 未设置或使用默认值"
+  echo "请设置一个安全的数据库密码"
+  echo ""
+fi
+
+# 重置数据库
+if [ "$RESET_DB" = "true" ]; then
+  echo "正在重置数据库（删除所有数据）..."
+  docker compose --profile micro-frontend down -v --remove-orphans
+  docker compose down -v --remove-orphans
+fi
+
+# 清理端口占用（微前端模式）
+if [ "$MODE" = "full" ] || [ "$MODE" = "micro-frontend" ]; then
+  if command -v lsof >/dev/null 2>&1; then
+    for p in 3050 4130 3032 4120; do
+      pid="$(lsof -ti tcp:$p 2>/dev/null || true)"
+      if [ -n "$pid" ]; then
+        echo "清理端口 $p 占用 (PID: $pid)"
+        kill -9 $pid 2>/dev/null || true
+      fi
+    done
+  fi
+fi
+
+# 启动服务
+echo "正在启动服务..."
+echo ""
+
+case "$MODE" in
+  core)
+    echo "启动核心服务 (MySQL, Redis, 后端, 权限中心前端)..."
+    docker compose up -d --build mysql redis backend frontend
+    ;;
+  user-center)
+    echo "启动核心服务 + 用户中心前端..."
+    docker compose up -d --build mysql redis backend frontend user-center-frontend
+    ;;
+  micro-frontend)
+    echo "启动微前端模式 (包含 mf-shell 基座)..."
+    docker compose --profile micro-frontend up -d --build
+    ;;
+  full|*)
+    echo "启动完整服务 (核心服务 + 用户中心前端)..."
+    docker compose up -d --build mysql redis backend frontend user-center-frontend
+    ;;
+esac
+
+echo ""
+echo "==================================="
+echo "服务状态："
+echo "==================================="
+docker compose ps
+
+# 检查后端健康状态
+if docker ps -a --format '{{.Names}}' | grep -q '^permission-backend$'; then
+  echo ""
+  echo "等待后端服务启动..."
+  for i in {1..30}; do
+    backend_health="$(docker inspect -f '{{.State.Health.Status}}' permission-backend 2>/dev/null || echo "unknown")"
+    if [ "$backend_health" = "healthy" ]; then
+      echo "✓ 后端服务已就绪"
+      break
     fi
-    if [ $i -eq 30 ]; then
-        echo -e "${RED}✗ 后端启动超时，请检查日志: $PROJECT_DIR/logs/backend.log${NC}"
-        exit 1
+    if [ "$i" -eq 30 ]; then
+      echo "⚠ 后端服务状态: $backend_health"
+      echo "如果启动失败，请运行: ./start-all.sh $MODE --reset-db"
     fi
-    sleep 1
-done
-
-# 启动前端
-echo -e "${YELLOW}[2/2] 启动前端服务...${NC}"
-cd "$PROJECT_DIR/permission-web-frontend"
-nohup npm run dev > "$PROJECT_DIR/logs/frontend.log" 2>&1 &
-FRONTEND_PID=$!
-echo $FRONTEND_PID > "$PROJECT_DIR/logs/frontend.pid"
-echo -e "${GREEN}✓ 前端服务已启动 (PID: $FRONTEND_PID)${NC}"
-echo -e "  日志文件: $PROJECT_DIR/logs/frontend.log"
-
-# 等待前端启动
-sleep 3
+    sleep 2
+  done
+fi
 
 echo ""
-echo -e "${GREEN}================================================${NC}"
-echo -e "${GREEN}          服务启动完成！${NC}"
-echo -e "${GREEN}================================================${NC}"
+echo "==================================="
+echo "访问地址："
+echo "==================================="
+echo "权限中心前端:      http://localhost:3000"
+echo "用户中心前端:      http://localhost:5174 (或通过权限中心内嵌访问)"
+echo "后端 API:          http://localhost:8080/api"
+
+if [ "$MODE" = "micro-frontend" ]; then
+  echo "微前端基座:        http://localhost:3050"
+  echo "微前端 API:        http://localhost:4130"
+fi
+
 echo ""
-echo -e "${BLUE}【访问地址】${NC}"
-echo -e "  前端: ${GREEN}http://localhost:3000${NC}"
-echo -e "  后端: ${GREEN}http://localhost:8080${NC}"
-echo -e "  API:  ${GREEN}http://localhost:8080/doc.html${NC}"
-echo ""
-echo -e "${BLUE}【测试账号】${NC}"
-echo -e "  管理员: ${GREEN}admin${NC} / ${GREEN}admin123${NC}"
-echo -e "  用户:   ${GREEN}user1${NC} / ${GREEN}user123${NC}"
-echo ""
-echo -e "${BLUE}【停止服务】${NC}"
-echo -e "  ${YELLOW}$PROJECT_DIR/stop-all.sh${NC}"
+echo "==================================="
+echo "默认账号："
+echo "==================================="
+if [ -n "${AUTH_ADMIN_PASS}" ]; then
+  echo "管理员: admin / [已设置密码]"
+else
+  echo "管理员: admin / [密码未设置，请在 .env 中配置 AUTH_ADMIN_PASS]"
+fi
+
+if [ -n "${AUTH_USER1_PASS}" ]; then
+  echo "普通用户: user1 / [已设置密码]"
+else
+  echo "普通用户: user1 / [密码未设置，请在 .env 中配置 AUTH_USER1_PASS]"
+fi
 echo ""

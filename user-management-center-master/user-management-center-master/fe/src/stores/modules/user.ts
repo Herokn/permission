@@ -1,85 +1,117 @@
-// import { defineStore } from 'pinia';
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { getCurrentUser, getUserPermissions } from '@/api/modules/auth'
 
-// import { getUserInfo as queryUserInfo, login as Login, logout as Logout } from '@/api/auth';
-// import { usePermissionStore } from '@/store';
-// import { LoginParams } from '@/types/api/auth';
-// import type { UserInfo } from '@/types/interface';
+interface UserInfo {
+  userId: string
+  userName: string
+  loginType?: string
+  permissions?: string[]
+  admin?: boolean
+  modules?: string[]
+}
 
-// const InitUserInfo: UserInfo = {
-//   nickName: '', // 用户名，用于展示在页面右上角头像处
-//   roles: [], // 前端权限模型使用 如果使用请配置modules/permission-fe.ts使用
+export const useUserStore = defineStore(
+  'user',
+  () => {
+    const token = ref<string>('')
+    const userInfo = ref<UserInfo | null>(null)
 
-//   userId: '', // 用户ID
-//   email: '', // 邮箱地址
-//   mobile: '', // 手机号
-//   tenantCode: '', // 租户编码
-//   tenantName: '', // 租户名称
-//   username: '', // 用户名
-//   avatar: '', // 头像URL
-//   enabled: true, // 是否启用
-//   description: '', // 描述
-//   birthday: '', // 生日
-//   orgId: '', // 组织ID
-//   dataPermission: null, // 数据权限
-//   funcPermissions: [], // 功能权限列表
-// };
+    const isAuthenticated = computed(() => !!token.value && !!userInfo.value)
+    const permissions = computed(() => userInfo.value?.permissions || [])
+    const isAdmin = computed(() => userInfo.value?.admin || false)
 
-// export const useUserStore = defineStore('user', {
-//   state: () => ({
-//     token: '',
-//     authenticationScheme: '', // 'Bearer', // 认证方案，默认Bearer
-//     userInfo: { ...InitUserInfo },
-//   }),
-//   getters: {
-//     roles: (state) => {
-//       return state.userInfo?.roles;
-//     },
-//   },
-//   actions: {
-//     async login(loginParams: LoginParams) {
-//       console.log('Login::userInfo', loginParams);
-//       const res = await Login(loginParams);
-//       console.log('Login::res', res);
-//       this.token = res?.accessToken || '';
-//       this.authenticationScheme = res?.tokenType || '';
-//       return res;
-//     },
-//     async getUserInfo() {
-//       // const mockRemoteUserInfo = async (token: string) => {
-//       //   if (token === 'main_token') {
-//       //     return {
-//       //       name: 'Tencent',
-//       //       roles: ['all'], // 前端权限模型使用 如果使用请配置modules/permission-fe.ts使用
-//       //     };
-//       //   }
-//       //   return {
-//       //     name: 'td_dev',
-//       //     roles: ['UserIndex', 'DashboardBase', 'login'], // 前端权限模型使用 如果使用请配置modules/permission-fe.ts使用
-//       //   };
-//       // };
-//       // const res = await mockRemoteUserInfo(this.token);
-//       // const { dataPermission, funcPermissions, loginLog, ...userInfo } = await queryUserInfo();
-//       // console.log('queryUserInfo::dataPermission', dataPermission);
-//       // console.log('queryUserInfo::funcPermissions', funcPermissions);
-//       // console.log('queryUserInfo::loginLog', loginLog);
-//       // console.log('queryUserInfo::userInfo', userInfo);
-//       const userInfo = await queryUserInfo();
+    // 检查是否有指定权限
+    const hasPermission = (permissionCode: string) => {
+      if (isAdmin.value) return true
+      return permissions.value.includes(permissionCode)
+    }
 
-//       this.userInfo = userInfo;
-//     },
-//     async logout(isLogoutApi = false) {
-//       this.token = '';
-//       this.userInfo = { ...InitUserInfo };
-//       // 根据条件调用退出接口
-//       isLogoutApi && (await Logout());
-//     },
-//   },
-//   persist: {
-//     afterRestore: () => {
-//       const permissionStore = usePermissionStore();
-//       permissionStore.initRoutes();
-//     },
-//     key: 'user',
-//     paths: ['token', 'authenticationScheme'],
-//   },
-// });
+    // 检查是否有任一权限
+    const hasAnyPermission = (permissionCodes: string[]) => {
+      if (isAdmin.value) return true
+      return permissionCodes.some((code) => permissions.value.includes(code))
+    }
+
+    // 设置 token（从 URL 参数获取）
+    const setToken = (newToken: string) => {
+      token.value = newToken
+    }
+
+    // 获取用户信息
+    const fetchUserInfo = async () => {
+      try {
+        const res = await getCurrentUser()
+        if (res.code === 200 && res.data) {
+          userInfo.value = res.data
+          return res.data
+        }
+      } catch (error) {
+        console.error('获取用户信息失败:', error)
+        throw error
+      }
+    }
+
+    // 获取用户权限
+    const fetchPermissions = async () => {
+      try {
+        const res = await getUserPermissions()
+        if (res.code === 200 && res.data) {
+          userInfo.value = res.data
+          return res.data
+        }
+      } catch (error) {
+        console.error('获取用户权限失败:', error)
+        throw error
+      }
+    }
+
+    // 清除登录状态
+    const clearAuth = () => {
+      token.value = ''
+      userInfo.value = null
+    }
+
+    return {
+      token,
+      userInfo,
+      isAuthenticated,
+      permissions,
+      isAdmin,
+      hasPermission,
+      hasAnyPermission,
+      setToken,
+      fetchUserInfo,
+      fetchPermissions,
+      clearAuth,
+    }
+  },
+  {
+    persist: {
+      key: 'user',
+      paths: ['token', 'userInfo'],
+    },
+  }
+)
+
+// 用户中心权限常量
+export const USER_CENTER_PERMISSIONS = {
+  // 用户查看
+  USER_VIEW: 'USER_CENTER_USER_VIEW',
+  // 用户创建
+  USER_CREATE: 'USER_CENTER_USER_CREATE',
+  // 用户编辑
+  USER_EDIT: 'USER_CENTER_USER_EDIT',
+  // 用户启用/禁用
+  USER_ENABLE: 'USER_CENTER_USER_ENABLE',
+  // 重置密码
+  USER_RESET_PWD: 'USER_CENTER_USER_RESET_PWD',
+  // 组织查看
+  ORG_VIEW: 'USER_CENTER_ORG_VIEW',
+  // 组织写操作（后端已拆分为 CREATE/EDIT/DELETE/MEMBER/ROLE 等；此处保留常用编辑码兼容旧按钮）
+  ORG_MANAGE: 'USER_CENTER_ORG_EDIT',
+  // 岗位查看
+  POSITION_VIEW: 'USER_CENTER_POSITION_VIEW',
+  // 岗位写操作（后端已拆分为 CREATE/EDIT/DELETE；此处保留编辑码兼容旧按钮）
+  POSITION_MANAGE: 'USER_CENTER_POSITION_EDIT',
+}

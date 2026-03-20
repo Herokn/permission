@@ -132,8 +132,10 @@ audit_log           # 审计日志
 ```
 
 📂 **数据库脚本**：
-- 建表 SQL：[permission-bootstrap/src/main/resources/db/migration/V1__init_schema.sql](permission-bootstrap/src/main/resources/db/migration/V1__init_schema.sql)
-- 演示数据：[permission-bootstrap/src/main/resources/db/migration/V2__init_demo_data.sql](permission-bootstrap/src/main/resources/db/migration/V2__init_demo_data.sql)
+- **完整初始化脚本（推荐）**：[permission-bootstrap/src/main/resources/db/init_full.sql](permission-bootstrap/src/main/resources/db/init_full.sql)
+  - 一键初始化：表结构 + 基础数据 + 演示数据
+  - 适用于全新环境部署
+- Flyway 迁移脚本（开发环境）：[permission-bootstrap/src/main/resources/db/migration/](permission-bootstrap/src/main/resources/db/migration/)
 
 ---
 
@@ -141,80 +143,164 @@ audit_log           # 审计日志
 
 ### 环境要求
 
-- Docker & Docker Compose（推荐）
-- 或手动环境：JDK 17+、Node.js 16+、MySQL 8.0+、Redis 7+
+- Docker Desktop（含 Compose 插件）
+- Windows 推荐 PowerShell 5+；Linux/macOS 可直接运行 `.sh`
 
-### 方式一：Docker 一键部署（推荐）
+### 配置文件
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/Herokn/permission.git
-cd permission
-
-# 2. 一键启动所有服务（MySQL + Redis + 后端 + 前端）
-docker-compose up -d
-
-# 3. 查看服务状态
-docker-compose ps
-
-# 4. 停止服务
-docker-compose down
+cp .env.example .env
 ```
 
-### 方式二：Shell 脚本部署
+本地 Docker：在 `.env` 中设置 **至少 32 字符** 的 `JWT_SECRET`（勿使用曾在模板中出现的固定弱串）。也可用 `openssl rand -base64 32` 生成。
+
+IDE 直接运行后端（不用 Docker）时：设置 `SPRING_PROFILES_ACTIVE=dev`，将使用 `application-dev.yml` 中的开发密钥；或自行导出 `JWT_SECRET`。
+
+```env
+DB_PASSWORD=root123
+JWT_SECRET=<你的随机密钥至少32字符>
+AUTH_ADMIN_PASS=admin123
+AUTH_USER1_PASS=user123
+```
+
+### 数据库初始化
+
+#### 方式一：Docker 自动初始化（推荐）
+
+Docker Compose 启动时会自动执行 Flyway 迁移脚本，无需手动操作。
+
+#### 方式二：手动初始化（生产环境）
+
+如需手动初始化数据库，可使用完整初始化脚本：
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/Herokn/permission.git
-cd permission
+# 1. 创建数据库
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS permission_center DEFAULT CHARSET utf8mb4;"
 
-# 2. 创建数据库
-mysql -u root -p -e "CREATE DATABASE permission DEFAULT CHARACTER SET utf8mb4;"
+# 2. 执行初始化脚本
+mysql -u root -p permission_center < permission-bootstrap/src/main/resources/db/init_full.sql
+```
 
-# 3. 编译部署
-chmod +x deploy.sh start-all.sh stop-all.sh
-./deploy.sh
+**init_full.sql 包含：**
+- 17 张核心表结构（权限、角色、用户、组织、岗位等）
+- 预置项目数据（P1、P2）
+- 完整权限点数据（项目权限 + 系统权限）
+- 7 种预设角色（超级管理员、各模块管理员等）
+- 三级组织架构（公司-部门-组）
+- 岗位体系（高管层到专业层）
+- 测试用户和角色分配
+
+### 启动模式
+
+#### 1) core 模式（仅权限中心）
+
+```bash
+docker compose up -d --build mysql redis backend frontend
+```
+
+或脚本方式：
+
+```bash
+./start-all.sh core
+```
+
+Windows:
+
+```powershell
+.\start-all.ps1 core
+```
+
+#### 2) full 模式（权限中心 + mf-shell + 用户管理中心）
+
+```bash
+docker compose --profile integration up -d --build
+```
+
+或脚本方式（默认就是 full）：
+
+```bash
 ./start-all.sh
 ```
 
-### 方式三：手动部署
+Windows:
 
-**Step 1: 准备基础环境**
-```bash
-# 启动 MySQL 和 Redis
-docker-compose up -d mysql redis
+```powershell
+.\start-all.ps1
 ```
 
-**Step 2: 启动后端**
-```bash
-# 编译打包
-./mvnw clean package -DskipTests
+`start-all.ps1 full` 会自动释放本机已占用的 `3050/4130/3032/4120` 端口后再启动容器。
 
-# 启动
-java -jar permission-bootstrap/target/permission-bootstrap-*.jar
+如果数据库密码改过，或出现 `Access denied for user 'root'`，请带重置参数重新启动：
+
+```bash
+./start-all.sh full --reset-db
 ```
 
-**Step 3: 启动前端**
-```bash
-cd permission-web-frontend
-npm install
-npm run dev
+Windows:
+
+```powershell
+.\start-all.ps1 full --reset-db
 ```
 
-### 访问地址
+### 停止服务
 
-| 服务 | Docker 部署 | 手动部署 |
-|------|------------|----------|
-| 前端界面 | http://localhost:3000 | http://localhost:3000 |
-| 后端 API | http://localhost:8080/api | http://localhost:8080/api |
-| API 文档 | http://localhost:8080/api/doc.html | http://localhost:8080/api/doc.html |
+```bash
+./stop-all.sh
+```
+
+Windows:
+
+```powershell
+.\stop-all.ps1
+```
+
+### 访问地址（full 模式）
+
+| 服务 | 地址 |
+|------|------|
+| 权限中心前端 | http://localhost:3000 |
+| 权限中心后端 API | http://localhost:8080/api |
+| 权限中心 API 文档 | http://localhost:8080/api/doc.html |
+| mf-shell 前端 | http://localhost:3050 |
+| mf-shell 后端健康检查 | http://localhost:4130/api/health |
+| 用户管理中心前端 | http://localhost:3032 |
+| 用户管理中心后端健康检查 | http://localhost:4120/api/health |
+
+### 登录与联动说明
+
+- 统一登录入口以权限中心为准（permission 项目登录态）
+- 从 `http://localhost:3050/login` 进入时，会检测 permission 登录态
+- 未登录会跳转到 `http://localhost:3000/login`
+- 登录后按权限显示系统入口：
+  - `SYS_USER_MANAGEMENT_ACCESS` 有权限 → 显示「用户管理中心 + 权限控制中心」
+  - 无权限 → 仅显示「权限控制中心」
 
 ### 测试账号
 
-| 角色 | 用户名 | 密码 |
-|------|--------|------|
-| 管理员 | admin | admin123 |
-| 普通用户 | user1 | user123456 |
+#### 权限中心账号
+
+| 角色 | 用户名 | 密码 | 权限说明 |
+|------|--------|------|----------|
+| 超级管理员 | admin | admin123 | 所有权限 |
+| 权限中心管理员 | perm_center_admin | perm_center_admin | 管理角色、权限点、用户授权 |
+| 普通用户 | testuser | testuser | 基本查看权限 |
+
+#### 用户中心账号（full 模式）
+
+| 角色 | 用户名 | 密码 | 权限说明 |
+|------|--------|------|----------|
+| 用户中心管理员 | user_center_admin | user_center_admin | 用户、组织、岗位全部权限 |
+| 组织管理员 | org_admin | org_admin | 仅组织管理权限 |
+| 用户查看员 | user_viewer | user_viewer | 仅查看用户 |
+| 用户组织管理员 | user_org_manager | user_org_manager | 查看用户 + 管理组织 |
+| 普通用户 | normal_user | normal_user | 基本查看权限 |
+
+#### 项目权限测试账号
+
+| 角色 | 用户名 | 项目 | 权限说明 |
+|------|--------|------|----------|
+| 项目经理 | U1 | P1 | 含审批权 |
+| 项目成员 | U2 | P1 | 无审批权 |
 
 ---
 
@@ -257,7 +343,7 @@ npm run dev
 | | Session 管理 | ✅ | 支持会话缓存 |
 | **审计日志** | 操作日志记录 | ✅ | @AuditLog 注解 + AOP |
 | **Docker 部署** | Dockerfile | ✅ | 多阶段构建 |
-| | docker-compose.yml | ✅ | MySQL + Redis + 后端 + 前端 |
+| | docker-compose.yml | ✅ | core 模式 + integration profile（含 mf-shell/用户中心） |
 | **数据权限** | 数据权限规则 | ✅ | 规则定义和存储 |
 | | 数据权限切面 | ✅ | @DataPermission 注解 |
 | | 数据权限上下文 | ✅ | ThreadLocal 传递 |
@@ -298,22 +384,45 @@ npm run dev
 | 功能 | 状态 | 说明 |
 |------|:----:|------|
 | Flyway 数据库迁移 | ✅ | V1~V13 迁移脚本已完成 |
-| Shell 一键部署脚本 | ✅ | deploy.sh, start-all.sh, stop-all.sh |
+| 一键部署脚本 | ✅ | deploy/start/stop 的 sh + ps1 双版本 |
 | Swagger API 文档 | ✅ | 集成 Knife4j |
 | 代码规范 (spec) | ✅ | PRD、设计规范、代码规范 |
 | 开发计划 (plans) | ✅ | 6 个模块开发计划 |
 | AI 技能定义 (skills) | ✅ | 3 个可复用技能 |
 
+### 用户管理中心集成（full 模式）
+
+| 功能模块 | 功能点 | 状态 | 说明 |
+|---------|--------|:----:|------|
+| **用户管理** | 用户列表 | ✅ | 分页查询、搜索 |
+| | 用户详情 | ✅ | 查看用户基本信息 |
+| | 用户创建 | ✅ | 新建用户 |
+| | 用户编辑 | ✅ | 修改用户信息 |
+| | 用户删除 | ✅ | 逻辑删除 |
+| | 启用/禁用 | ✅ | 用户状态管理 |
+| | 重置密码 | ✅ | 管理员重置用户密码 |
+| **组织架构** | 组织树展示 | ✅ | 三级架构：公司-部门-组 |
+| | 组织 CRUD | ✅ | 创建、编辑、删除组织 |
+| | 组织成员管理 | ✅ | 添加/移除组织成员 |
+| | 主组织设置 | ✅ | 设置用户主组织 |
+| **岗位管理** | 岗位列表 | ✅ | 岗位体系管理 |
+| | 岗位 CRUD | ✅ | 创建、编辑、删除岗位 |
+| | 组织岗位配置 | ✅ | 为组织配置可用岗位 |
+| **权限联动** | 细粒度权限控制 | ✅ | 7 种预设角色 + 灵活组合 |
+| | 权限测试账号 | ✅ | 每种角色有对应测试账号 |
+
 ### 补充功能
 
 | 功能 | 状态 | 说明 |
 |------|:----:|------|
-| Docker 部署验证 | ✅ | Dockerfile 和 docker-compose.yml 已完善，支持一键部署 |
+| Docker 部署验证 | ✅ | 支持 core/full 两种启动模式 |
 | 单元测试覆盖 | ✅ | 测试类已编写并通过验证，共 50 个测试用例 |
 | Redis 缓存集成 | ✅ | 缓存逻辑已完善，权限变更自动清除缓存 |
 | 数据权限 | ✅ | 已实现数据权限规则、切面、上下文 |
 | 批量授权操作 | ✅ | 已实现批量分配角色、批量授权 API |
 | 项目维度隔离 | ✅ | 角色/权限点支持 projectId 隔离，V12/V13 迁移 |
+| 完整初始化SQL | ✅ | init_full.sql 一键初始化数据库 |
+| 组织岗位体系 | ✅ | 三级组织架构 + 岗位体系 + 预置数据 |
 
 ---
 
@@ -496,50 +605,24 @@ authz:{userId}:{permissionCode}:{projectId}    # 鉴权结果缓存
 | Shell 脚本部署 | 生产环境（无 Docker） | 可控性更强，资源开销更小 |
 | Kubernetes | 大规模分布式部署 | 企业级容器编排 |
 
-**Docker Compose 一键部署（推荐）**：
+### 部署说明补充
+
+部署命令以「快速开始」章节为准：
+
+- core：仅权限中心（3000/8080）
+- full：权限中心 + mf-shell + 用户管理中心（3000/8080/3050/4130/3032/4120）
+
+推荐命令：
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/Herokn/permission.git
-cd permission
-
-# 2. 一键启动所有服务
-docker-compose up -d
-
-# 服务包含：
-# - MySQL 8.0（端口 3306）
-# - Redis 7（端口 6379）
-# - 后端服务（端口 8080）
-# - 前端服务（端口 3000）
+./start-all.sh
 ```
 
-**手动部署**：
+Windows:
 
-适合需要自定义环境配置的场景：
-
-```bash
-# Step 1: 准备基础环境（Docker）
-docker-compose up -d mysql redis
-
-# Step 2: 编译后端
-./mvnw clean package -DskipTests
-
-# Step 3: 启动后端
-java -jar permission-bootstrap/target/permission-bootstrap-*.jar
-
-# Step 4: 构建并启动前端
-cd permission-web-frontend
-npm install && npm run build
-# 使用 nginx 托管 dist 目录
+```powershell
+.\start-all.ps1
 ```
-
-**访问地址**：
-
-| 服务 | Docker 部署地址 | 手动部署地址 |
-|------|----------------|--------------|
-| 前端界面 | http://localhost:3000 | http://localhost:3000 |
-| 后端 API | http://localhost:8080/api | http://localhost:8080/api |
-| API 文档 | http://localhost:8080/api/doc.html | http://localhost:8080/api/doc.html |
 
 ### 3. 分层架构：为什么采用六层架构？
 
@@ -672,9 +755,12 @@ permission/
 │   ├── DESIGN.md              # 设计文档
 │   └── TEST_CASES.md          # 测试用例
 │
-├── deploy.sh                  # 一键部署脚本
-├── start-all.sh               # 启动脚本
-├── stop-all.sh                # 停止脚本
+├── deploy.sh                  # Linux/macOS 构建脚本
+├── start-all.sh               # Linux/macOS 启动脚本
+├── stop-all.sh                # Linux/macOS 停止脚本
+├── deploy.ps1                 # Windows 构建脚本
+├── start-all.ps1              # Windows 启动脚本
+├── stop-all.ps1               # Windows 停止脚本
 └── README.md                  # 项目说明
 ```
 

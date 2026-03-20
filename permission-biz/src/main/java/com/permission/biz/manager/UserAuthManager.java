@@ -55,5 +55,10 @@ public interface UserAuthManager {
      * 查询用户授权详情
      */
     UserAuthDetailVO getUserAuthDetail(String userId);
+
+    /**
+     * 按登录账号查询业务用户授权详情
+     */
+    UserAuthDetailVO getUserAuthDetailByLoginAccount(String loginAccount);
 }
 

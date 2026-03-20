@@ -86,7 +86,8 @@ const transform: AxiosTransform = {
     const { code, message, success } = data
 
     // 这里逻辑可以根据项目进行修改
-    const hasSuccess = data && code === 2000 && !!success
+    // Java 后端返回 code: 200 表示成功
+    const hasSuccess = data && (code === 200 || code === 2000)
     if (hasSuccess) {
       return data.data || true
     }

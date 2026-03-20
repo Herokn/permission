@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from 'axios';
 import { get, post } from '@/utils/request';
 import { 
   ApiResponse, 
@@ -71,8 +72,9 @@ export const listRoles = (params?: PageRequest & { roleName?: string }): Promise
   return get<PageResponse<Role>>(`${API_PREFIX}/roles`, { params });
 };
 
-export const listAllRoles = (): Promise<ApiResponse<Role[]>> => {
-  return get<Role[]>(`${API_PREFIX}/roles/all`);
+export const listAllRoles = (projectId?: string): Promise<ApiResponse<Role[]>> => {
+  const params = projectId ? { projectId } : undefined;
+  return get<Role[]>(`${API_PREFIX}/roles/all`, { params });
 };
 
 export const getRole = (roleId: number): Promise<ApiResponse<Role>> => {
@@ -102,7 +104,19 @@ export const grantPermissionsToRole = (roleId: number, permissionCodes: string[]
 // ==================== 用户授权 ====================
 
 export const getUserAuthDetail = (userId: string): Promise<ApiResponse<UserAuthDetail>> => {
-  return get<UserAuthDetail>(`${API_PREFIX}/user-auth/${encodeURIComponent(userId)}`);
+  return get<UserAuthDetail>(`${API_PREFIX}/user-auth/detail`, { params: { userId } });
+};
+
+/** 用户授权详情变更后若仍打勾，多为浏览器/代理缓存了 GET；每次带时间戳并禁用缓存 */
+export const getUserAuthDetailByLoginAccount = (loginAccount: string): Promise<ApiResponse<UserAuthDetail>> => {
+  const config: AxiosRequestConfig = {
+    params: { loginAccount, _: Date.now() },
+    headers: {
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    },
+  };
+  return get<UserAuthDetail>(`${API_PREFIX}/user-auth/detail`, config);
 };
 
 export const assignUserRole = (data: AssignUserRoleRequest): Promise<ApiResponse<void>> => {

@@ -8,6 +8,7 @@ import { i18n } from './locales'
 import garfish from './mfe/garfish'
 import { initRouter, router } from './router'
 import { store } from './stores'
+import { useUserStore } from './stores/modules/user'
 import './styles/index.less'
 
 // 使用 VueUse 检测移动设备
@@ -36,6 +37,47 @@ window.addEventListener('resize', updateRem)
 
 let app: VueApp | null = null
 
+/**
+ * 从 URL 参数获取 token
+ * 当作为 iframe 嵌入时，父应用会在 URL 中传递 access_token
+ */
+function getTokenFromUrl(): string | null {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('access_token')
+}
+
+/**
+ * 初始化认证状态
+ */
+async function initAuth() {
+  const userStore = useUserStore()
+
+  // 如果 localStorage 中已有 token 和用户信息，直接使用
+  if (userStore.isAuthenticated) {
+    return
+  }
+
+  // 尝试从 URL 获取 token（iframe 嵌入模式）
+  const tokenFromUrl = getTokenFromUrl()
+  if (tokenFromUrl) {
+    userStore.setToken(tokenFromUrl)
+    // 清除 URL 中的 token 参数
+    const url = new URL(window.location.href)
+    url.searchParams.delete('access_token')
+    window.history.replaceState({}, '', url.toString())
+  }
+
+  // 如果有 token，获取用户信息
+  if (tokenFromUrl) {
+    try {
+      await userStore.fetchUserInfo()
+    } catch (error) {
+      console.error('初始化用户信息失败:', error)
+      userStore.clearAuth()
+    }
+  }
+}
+
 // 渲染函数
 async function render(props: any = {}) {
   const { container, basename } = props
@@ -57,6 +99,9 @@ async function render(props: any = {}) {
 
   const root = container ? container.querySelector('#app') : '#app'
   app.mount(root)
+
+  // 初始化认证状态
+  await initAuth()
 }
 
 // 销毁函数

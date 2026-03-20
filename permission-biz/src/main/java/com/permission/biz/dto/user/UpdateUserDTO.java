@@ -1,5 +1,6 @@
 package com.permission.biz.dto.user;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -25,6 +26,7 @@ public class UpdateUserDTO {
 
     private String avatarUrl;
 
+    @JsonAlias("orgId")
     private Long primaryOrgId;
 
     private Long positionId;

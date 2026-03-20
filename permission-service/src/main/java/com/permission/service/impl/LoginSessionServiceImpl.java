@@ -13,7 +13,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 /**
  * 登录会话 Service 实现（Redis 缓存 + 数据库持久化）
@@ -57,7 +59,7 @@ public class LoginSessionServiceImpl implements LoginSessionService {
      */
     private void saveToRedis(LoginSessionDO session) {
         String sessionId = session.getSessionId();
-        
+
         // 构建 Redis 存储的 DTO
         SessionCacheDTO cacheDTO = new SessionCacheDTO();
         cacheDTO.setSessionId(sessionId);
@@ -78,24 +80,24 @@ public class LoginSessionServiceImpl implements LoginSessionService {
             ttlSeconds = DEFAULT_REFRESH_TOKEN_TTL;
         }
 
-        // 存储会话数据
-        String sessionKey = SESSION_KEY_PREFIX + sessionId;
-        redisTemplate.opsForValue().set(sessionKey, cacheDTO, ttlSeconds, TimeUnit.SECONDS);
-
-        // 添加到用户的会话集合
-        String userSessionKey = USER_SESSION_KEY_PREFIX + session.getUserId();
-        redisTemplate.opsForSet().add(userSessionKey, sessionId);
-        redisTemplate.expire(userSessionKey, ttlSeconds, TimeUnit.SECONDS);
-
-        log.debug("Session saved to Redis: sessionId={}, userId={}, ttl={}s", 
-                sessionId, session.getUserId(), ttlSeconds);
+        long ttlFinal = ttlSeconds;
+        runRedis("save session", () -> {
+            String sessionKey = SESSION_KEY_PREFIX + sessionId;
+            redisTemplate.opsForValue().set(sessionKey, cacheDTO, ttlFinal, TimeUnit.SECONDS);
+            String userSessionKey = USER_SESSION_KEY_PREFIX + session.getUserId();
+            redisTemplate.opsForSet().add(userSessionKey, sessionId);
+            redisTemplate.expire(userSessionKey, ttlFinal, TimeUnit.SECONDS);
+            log.debug("Session saved to Redis: sessionId={}, userId={}, ttl={}s",
+                    sessionId, session.getUserId(), ttlFinal);
+        });
     }
 
     @Override
     public LoginSessionDO getBySessionId(String sessionId) {
         // 1. 先查 Redis
         String sessionKey = SESSION_KEY_PREFIX + sessionId;
-        SessionCacheDTO cacheDTO = (SessionCacheDTO) redisTemplate.opsForValue().get(sessionKey);
+        SessionCacheDTO cacheDTO = getRedis("get session",
+                () -> (SessionCacheDTO) redisTemplate.opsForValue().get(sessionKey), null);
 
         if (cacheDTO != null) {
             log.debug("Session hit Redis cache: sessionId={}", sessionId);
@@ -136,7 +138,8 @@ public class LoginSessionServiceImpl implements LoginSessionService {
     public List<LoginSessionDO> listActiveByUserId(String userId) {
         // 1. 从 Redis 获取用户的所有活跃会话ID
         String userSessionKey = USER_SESSION_KEY_PREFIX + userId;
-        java.util.Set<Object> sessionIds = redisTemplate.opsForSet().members(userSessionKey);
+        Set<Object> sessionIds = getRedis("list user sessions",
+                () -> redisTemplate.opsForSet().members(userSessionKey), null);
 
         if (sessionIds != null && !sessionIds.isEmpty()) {
             List<LoginSessionDO> sessions = new java.util.ArrayList<>();
@@ -184,18 +187,17 @@ public class LoginSessionServiceImpl implements LoginSessionService {
 
         // 2. 更新 Redis 缓存
         String sessionKey = SESSION_KEY_PREFIX + sessionId;
-        SessionCacheDTO cacheDTO = (SessionCacheDTO) redisTemplate.opsForValue().get(sessionKey);
-
-        if (cacheDTO != null) {
-            cacheDTO.setAccessToken(accessToken);
-            cacheDTO.setExpiresAt(expiresAt);
-            
-            // 重新计算 TTL
-            long ttlSeconds = calculateTtl(cacheDTO.getRefreshExpiresAt());
-            if (ttlSeconds > 0) {
-                redisTemplate.opsForValue().set(sessionKey, cacheDTO, ttlSeconds, TimeUnit.SECONDS);
+        runRedis("update access token cache", () -> {
+            SessionCacheDTO cacheDTO = (SessionCacheDTO) redisTemplate.opsForValue().get(sessionKey);
+            if (cacheDTO != null) {
+                cacheDTO.setAccessToken(accessToken);
+                cacheDTO.setExpiresAt(expiresAt);
+                long ttlSeconds = calculateTtl(cacheDTO.getRefreshExpiresAt());
+                if (ttlSeconds > 0) {
+                    redisTemplate.opsForValue().set(sessionKey, cacheDTO, ttlSeconds, TimeUnit.SECONDS);
+                }
             }
-        }
+        });
     }
 
     @Override
@@ -205,9 +207,10 @@ public class LoginSessionServiceImpl implements LoginSessionService {
 
     @Override
     public void revokeAllSessions(String userId) {
-        // 1. 获取用户所有活跃会话
+        // 1. 获取用户所有活跃会话（Redis 不可用时仅依赖数据库）
         String userSessionKey = USER_SESSION_KEY_PREFIX + userId;
-        java.util.Set<Object> sessionIds = redisTemplate.opsForSet().members(userSessionKey);
+        Set<Object> sessionIds = getRedis("revoke all list",
+                () -> redisTemplate.opsForSet().members(userSessionKey), null);
 
         // 2. 批量撤销
         if (sessionIds != null && !sessionIds.isEmpty()) {
@@ -242,23 +245,34 @@ public class LoginSessionServiceImpl implements LoginSessionService {
      * 删除 Redis 中的会话缓存
      */
     private void deleteFromRedis(String sessionId) {
-        // 1. 获取用户ID用于清理用户会话集合
         String sessionKey = SESSION_KEY_PREFIX + sessionId;
-        SessionCacheDTO cacheDTO = (SessionCacheDTO) redisTemplate.opsForValue().get(sessionKey);
+        runRedis("delete session", () -> {
+            SessionCacheDTO cacheDTO = (SessionCacheDTO) redisTemplate.opsForValue().get(sessionKey);
+            if (cacheDTO != null) {
+                String userSessionKey = USER_SESSION_KEY_PREFIX + cacheDTO.getUserId();
+                redisTemplate.opsForSet().remove(userSessionKey, sessionId);
+            }
+            redisTemplate.delete(sessionKey);
+            redisTemplate.delete("session:valid:" + sessionId);
+            log.debug("Session deleted from Redis: sessionId={}", sessionId);
+        });
+    }
 
-        if (cacheDTO != null) {
-            // 2. 从用户会话集合中移除
-            String userSessionKey = USER_SESSION_KEY_PREFIX + cacheDTO.getUserId();
-            redisTemplate.opsForSet().remove(userSessionKey, sessionId);
+    private void runRedis(String operation, Runnable action) {
+        try {
+            action.run();
+        } catch (Exception e) {
+            log.warn("Redis {} failed (session cache degraded, DB still authoritative): {}", operation, e.getMessage());
         }
+    }
 
-        // 3. 删除会话数据
-        redisTemplate.delete(sessionKey);
-
-        // 4. 删除会话验证缓存
-        redisTemplate.delete("session:valid:" + sessionId);
-
-        log.debug("Session deleted from Redis: sessionId={}", sessionId);
+    private <T> T getRedis(String operation, Supplier<T> supplier, T defaultValue) {
+        try {
+            return supplier.get();
+        } catch (Exception e) {
+            log.warn("Redis {} read failed: {}", operation, e.getMessage());
+            return defaultValue;
+        }
     }
 
     /**

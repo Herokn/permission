@@ -42,6 +42,7 @@ export interface UserInfo {
   loginType?: string;
   permissions?: string[];
   admin?: boolean;
+  modules?: string[];
 }
 
 /**
@@ -131,8 +132,12 @@ export interface UserDirectPermission {
  */
 export interface UserAuthDetail {
   userId: string;
+  loginAccount?: string;
+  displayName?: string;
   roles: UserRole[];
   directPermissions: UserDirectPermission[];
+  /** 启用角色下的权限点编码并集（去重），与 directPermissions 一起反映生效范围 */
+  rolePermissionCodes?: string[];
 }
 
 /**

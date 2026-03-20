@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -50,8 +51,10 @@ public class RolePermissionServiceImpl implements RolePermissionService {
         removeByRoleId(roleId);
 
         if (permissionCodes != null && !permissionCodes.isEmpty()) {
-            List<RolePermissionDO> entities = new ArrayList<>(permissionCodes.size());
-            for (String code : permissionCodes) {
+            // 去重且保持顺序，避免重复提交或前端重复项产生冗余行
+            List<String> distinct = new ArrayList<>(new LinkedHashSet<>(permissionCodes));
+            List<RolePermissionDO> entities = new ArrayList<>(distinct.size());
+            for (String code : distinct) {
                 RolePermissionDO rp = new RolePermissionDO();
                 rp.setRoleId(roleId);
                 rp.setPermissionCode(code);

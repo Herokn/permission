@@ -23,9 +23,13 @@ const PositionPage: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await request.get<Position[]>('/api/positions');
-      setData(Array.isArray(response) ? response : []);
-    } catch {
+      const response = await request.get('/api/positions');
+      const apiResponse = (response as any).data;
+      const positionList = apiResponse?.data || [];
+      console.log('PositionPage loaded positions:', Array.isArray(positionList) ? positionList.length : 0);
+      setData(Array.isArray(positionList) ? positionList : []);
+    } catch (error) {
+      console.error('加载岗位列表失败:', error);
       message.error('加载岗位列表失败');
     } finally {
       setLoading(false);

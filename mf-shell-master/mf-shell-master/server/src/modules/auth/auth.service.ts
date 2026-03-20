@@ -3,6 +3,12 @@ import { ConfigService } from '@nestjs/config'
 import { HttpService } from '../../core/http/http.service.js'
 
 type LoginPayload = { username: string; password: string }
+type PermissionSession = {
+  token: string
+  userId: string
+  username: string
+  cookieHeader: string
+}
 
 @Injectable()
 export class AuthService {
@@ -11,6 +17,13 @@ export class AuthService {
   private readonly clientId: string
   private readonly clientSecret: string
   private readonly redirectUri: string
+  private readonly permissionBaseUrl: string
+  private readonly permissionCenterUrl: string
+  private readonly userManagementUrl: string
+  private readonly defaultProjectId: string
+  private readonly usePermissionLogin: boolean
+  private readonly systemPermissionMap: Record<string, string>
+  private readonly permissionSessions = new Map<string, PermissionSession>()
 
   constructor(
     @Inject(HttpService)
@@ -32,6 +45,30 @@ export class AuthService {
     this.clientId = getEnv('SSO_CLIENT_ID')
     this.clientSecret = getEnv('SSO_CLIENT_SECRET')
     this.redirectUri = getEnv('SSO_REDIRECT_URI')
+    this.permissionBaseUrl = getEnv(
+      'PERMISSION_BASE_URL',
+      'http://localhost:8080/api'
+    )
+    this.permissionCenterUrl = getEnv(
+      'PERMISSION_CENTER_URL',
+      'http://localhost:3000/'
+    )
+    this.userManagementUrl = getEnv(
+      'USER_MANAGEMENT_URL',
+      'http://localhost:3032/users/'
+    )
+    this.defaultProjectId = getEnv('DEFAULT_PROJECT_ID', 'P1')
+    this.usePermissionLogin = getEnv('USE_PERMISSION_LOGIN', '1') === '1'
+    this.systemPermissionMap = {
+      'user-management': getEnv(
+        'PERM_CODE_USER_MANAGEMENT',
+        'SYS_USER_MANAGEMENT_ACCESS'
+      ),
+      'permission-center': getEnv(
+        'PERM_CODE_PERMISSION_CENTER',
+        'SYS_PERMISSION_CENTER_ACCESS'
+      ),
+    }
 
     // 验证必填配置
     const missingConfigs: string[] = []
@@ -500,6 +537,23 @@ export class AuthService {
 
   // 5. 登出
   async logout(ssoSessionId?: string, wbAccessToken?: string) {
+    const localToken = this.normalizeBearerToken(wbAccessToken || '')
+    if (localToken && this.permissionSessions.has(localToken)) {
+      const session = this.permissionSessions.get(localToken)!
+      try {
+        await fetch(`${this.permissionBaseUrl}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            Cookie: session.cookieHeader,
+          },
+        })
+      } catch {}
+      this.permissionSessions.delete(localToken)
+      return {
+        success: true,
+        clearStorage: true,
+      }
+    }
     const url = `${this.ssoBaseUrl}/api/v1/sso/logout`
     console.log(
       'Logout Request:',
@@ -597,8 +651,207 @@ export class AuthService {
     }
   }
 
-  // 登录 (代理 SSO 登录)
+  private normalizeBearerToken(authorization = '') {
+    return authorization.replace(/^Bearer\s+/i, '').trim()
+  }
+
+  private generateLocalToken(username: string) {
+    const raw = `${username}:${Date.now()}:${Math.random().toString(36).slice(2)}`
+    return Buffer.from(raw).toString('base64url')
+  }
+
+  private extractCookieHeader(resp: Response) {
+    const headersAny = resp.headers as any
+    const cookieLines: string[] =
+      headersAny?.getSetCookie?.() || (resp.headers.get('set-cookie') ? [resp.headers.get('set-cookie') as string] : [])
+    return cookieLines
+      .map((line) => line.split(';')[0]?.trim())
+      .filter(Boolean)
+      .join('; ')
+  }
+
+  private async loginToPermissionCenter(payload: LoginPayload) {
+    const loginResp = await fetch(`${this.permissionBaseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userName: payload.username,
+        password: payload.password,
+      }),
+    })
+    const body = await loginResp.json().catch(() => ({}))
+    const ok =
+      loginResp.ok &&
+      (body?.code === '200' || body?.code === 200 || body?.success === true)
+    if (!ok) {
+      return { ok: false, body, cookieHeader: '' }
+    }
+    const cookieHeader = this.extractCookieHeader(loginResp)
+    return { ok: true, body, cookieHeader }
+  }
+
+  private createPermissionSession(
+    userInfo: any,
+    fallbackUsername: string,
+    cookieHeader: string,
+    projectId?: string
+  ) {
+    const username = userInfo?.userName || fallbackUsername
+    const userId = userInfo?.userId || username
+    const token = this.generateLocalToken(username)
+    this.permissionSessions.set(token, {
+      token,
+      userId,
+      username,
+      cookieHeader,
+    })
+    return {
+      code: 2000,
+      message: 'Login Success',
+      success: true,
+      data: {
+        accessToken: token,
+        tokenType: 'Bearer',
+        username,
+        userId,
+        projectId: projectId || this.defaultProjectId,
+      },
+    }
+  }
+
+  async loginByPermissionSession(cookieHeader = '', projectId?: string) {
+    if (!cookieHeader) {
+      return {
+        code: 401,
+        message: 'Permission login required',
+        success: false,
+      }
+    }
+    try {
+      const userResp = await fetch(`${this.permissionBaseUrl}/auth/current-user`, {
+        method: 'GET',
+        headers: {
+          Cookie: cookieHeader,
+        },
+      })
+      const userBody = await userResp.json().catch(() => ({}))
+      const ok =
+        userResp.ok &&
+        (userBody?.code === '200' ||
+          userBody?.code === 200 ||
+          userBody?.success === true)
+      if (!ok) {
+        return {
+          code: 401,
+          message: 'Permission login required',
+          success: false,
+        }
+      }
+      const userInfo = userBody?.data || userBody?.result || {}
+      const fallbackUsername = userInfo?.userName || 'permission_user'
+      return this.createPermissionSession(
+        userInfo,
+        fallbackUsername,
+        cookieHeader,
+        projectId
+      )
+    } catch {
+      return {
+        code: 401,
+        message: 'Permission login required',
+        success: false,
+      }
+    }
+  }
+
+  async getSystems(authorization = '', projectId?: string) {
+    const token = this.normalizeBearerToken(authorization)
+    const session = this.permissionSessions.get(token)
+    if (!session) {
+      return { code: 401, message: 'Unauthorized', result: [] as any[] }
+    }
+    const targetProjectId = projectId || this.defaultProjectId
+    const systems: any[] = [
+      {
+        mapUuid: 'permission-center',
+        mapShowname: '权限控制中心',
+        mapCode: 'permission-center',
+        mapUrl: this.permissionCenterUrl,
+        mapExternal: 'Y',
+      },
+    ]
+    const userCenterPermission =
+      this.systemPermissionMap['user-management'] || 'SYS_USER_MANAGEMENT_ACCESS'
+    let canAccessUserCenter = false
+    try {
+      const resp = await fetch(`${this.permissionBaseUrl}/authz/check`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: session.cookieHeader,
+        },
+        body: JSON.stringify({
+          userId: session.userId || session.username,
+          permissionCode: userCenterPermission,
+          projectId: targetProjectId,
+        }),
+      })
+      const data = await resp.json().catch(() => ({}))
+      canAccessUserCenter =
+        data?.data?.allowed === true ||
+        data?.result?.allowed === true ||
+        data?.allowed === true
+    } catch {
+      canAccessUserCenter = false
+    }
+    if (canAccessUserCenter) {
+      const userCenterUrl = new URL(this.userManagementUrl)
+      userCenterUrl.searchParams.set('token', token)
+      userCenterUrl.searchParams.set('hideMenu', 'true')
+      systems.unshift({
+        mapUuid: 'user-management',
+        mapShowname: '用户管理中心',
+        mapCode: 'user-management',
+        mapUrl: userCenterUrl.toString(),
+        mapExternal: 'Y',
+      })
+    }
+    return {
+      code: 200,
+      message: 'ok',
+      result: systems,
+    }
+  }
+
+  getCurrentUserByToken(authorization = '') {
+    const token = this.normalizeBearerToken(authorization)
+    const session = this.permissionSessions.get(token)
+    if (!session) return null
+    return {
+      username: session.username,
+      userId: session.userId,
+      roles: ['user'],
+    }
+  }
+
   async login(payload: LoginPayload) {
+    if (this.usePermissionLogin) {
+      const permissionLogin = await this.loginToPermissionCenter(payload)
+      if (!permissionLogin.ok) {
+        return {
+          code: 401,
+          message: permissionLogin.body?.message || 'Login Failed',
+          success: false,
+        }
+      }
+      const userInfo = permissionLogin.body?.data || permissionLogin.body?.result || {}
+      return this.createPermissionSession(
+        userInfo,
+        payload.username,
+        permissionLogin.cookieHeader,
+        this.defaultProjectId
+      )
+    }
     return this.ssoLogin(payload)
   }
 }

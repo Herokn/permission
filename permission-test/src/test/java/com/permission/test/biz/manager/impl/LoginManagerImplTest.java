@@ -1,5 +1,6 @@
 package com.permission.test.biz.manager.impl;
 
+import com.permission.biz.config.AuthUsersConfig;
 import com.permission.biz.dto.auth.LoginDTO;
 import com.permission.biz.dto.auth.RefreshTokenDTO;
 import com.permission.biz.manager.impl.LoginManagerImpl;
@@ -10,9 +11,11 @@ import com.permission.common.enums.SessionStatusEnum;
 import com.permission.common.exception.BusinessException;
 import com.permission.common.util.JwtUtil;
 import com.permission.dal.dataobject.LoginSessionDO;
+import com.permission.dal.mapper.UserMapper;
 import com.permission.service.AuthzService;
 import com.permission.service.LoginSessionService;
 import com.permission.service.PasswordService;
+import com.permission.service.RateLimitService;
 import com.permission.test.base.BaseTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,11 +26,14 @@ import org.mockito.Spy;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 /**
@@ -48,6 +54,15 @@ class LoginManagerImplTest extends BaseTest {
     @Mock
     private AuthzService authzService;
 
+    @Mock
+    private AuthUsersConfig authUsersConfig;
+
+    @Mock
+    private RateLimitService rateLimitService;
+
+    @Mock
+    private UserMapper userMapper;
+
     @Spy
     private PermissionConfig permissionConfig = new PermissionConfig();
 
@@ -56,7 +71,8 @@ class LoginManagerImplTest extends BaseTest {
 
     private static final String TEST_USER = "admin";
     private static final String TEST_PASSWORD = "admin123";
-    private static final String TEST_USER_ID = "admin";
+    /** 配置登录账号 admin 对应的 JWT 业务 userId */
+    private static final String TEST_USER_ID = "sys_admin";
     private static final String TEST_SESSION_ID = "test-session-id";
     private static final String TEST_ACCESS_TOKEN = "test-access-token";
     private static final String TEST_REFRESH_TOKEN = "test-refresh-token";
@@ -67,7 +83,11 @@ class LoginManagerImplTest extends BaseTest {
         configuredUsers.put(TEST_USER, "$2a$10$encodedpassword");
         ReflectionTestUtils.setField(loginManager, "configuredUsers", configuredUsers);
         // 设置超级管理员配置
-        permissionConfig.setSuperAdmins("admin");
+        permissionConfig.setSuperAdmins("sys_admin");
+        lenient().when(authzService.getUserPermissionCodes(anyString(), isNull()))
+                .thenReturn(Collections.emptySet());
+        lenient().doNothing().when(rateLimitService).reset(anyString());
+        lenient().when(userMapper.selectOne(any())).thenReturn(null);
     }
 
     @Test
@@ -77,6 +97,7 @@ class LoginManagerImplTest extends BaseTest {
         dto.setUserName(TEST_USER);
         dto.setPassword(TEST_PASSWORD);
 
+        when(rateLimitService.allowLogin(TEST_USER, 5, 300)).thenReturn(true);
         when(passwordService.matches(TEST_PASSWORD, "$2a$10$encodedpassword")).thenReturn(true);
         when(jwtUtil.getDefaultAccessTokenExpireMillis()).thenReturn(7200000L);
         when(jwtUtil.getDefaultRefreshTokenExpireMillis()).thenReturn(604800000L);
@@ -103,6 +124,8 @@ class LoginManagerImplTest extends BaseTest {
         dto.setUserName("nonexistent");
         dto.setPassword(TEST_PASSWORD);
 
+        when(rateLimitService.allowLogin("nonexistent", 5, 300)).thenReturn(true);
+
         assertThrows(BusinessException.class, () -> loginManager.login(dto));
 
         verify(loginSessionService, never()).save(any());
@@ -115,6 +138,7 @@ class LoginManagerImplTest extends BaseTest {
         dto.setUserName(TEST_USER);
         dto.setPassword("wrongpassword");
 
+        when(rateLimitService.allowLogin(TEST_USER, 5, 300)).thenReturn(true);
         when(passwordService.matches("wrongpassword", "$2a$10$encodedpassword")).thenReturn(false);
 
         assertThrows(BusinessException.class, () -> loginManager.login(dto));
@@ -242,6 +266,7 @@ class LoginManagerImplTest extends BaseTest {
         dto.setUserName(TEST_USER);
         dto.setPassword(TEST_PASSWORD);
 
+        when(rateLimitService.allowLogin(TEST_USER, 5, 300)).thenReturn(true);
         when(passwordService.matches(TEST_PASSWORD, "$2a$10$encodedpassword")).thenReturn(true);
         when(jwtUtil.getDefaultAccessTokenExpireMillis()).thenReturn(7200000L);
         when(jwtUtil.getDefaultRefreshTokenExpireMillis()).thenReturn(604800000L);

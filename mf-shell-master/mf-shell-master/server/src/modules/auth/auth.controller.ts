@@ -73,6 +73,14 @@ export class AuthController {
     return this.auth.login(payload)
   }
 
+  @Post('login/by-permission-session')
+  async loginByPermissionSession(
+    @Headers('cookie') cookie = '',
+    @Body() payload: { projectId?: string }
+  ) {
+    return this.auth.loginByPermissionSession(cookie, payload?.projectId)
+  }
+
   @Post('logout')
   async logout(
     @Body() body: { ssoSessionId?: string },
@@ -82,9 +90,21 @@ export class AuthController {
     return { code: 200, result }
   }
 
+  @Get('systems')
+  async getSystems(
+    @Headers('authorization') authorization = '',
+    @Query('projectId') projectId?: string
+  ) {
+    return this.auth.getSystems(authorization, projectId)
+  }
+
   @Get('me')
   me(@Headers('authorization') authorization = '') {
     const token = authorization || ''
+    const currentUser = this.auth.getCurrentUserByToken(authorization)
+    if (currentUser) {
+      return { code: 200, result: currentUser }
+    }
     // 这里需要扩展：如果 token 是 SSO 返回的 JWT，需要校验或解析
     // 暂时保留 mock 逻辑兼容
     if (token.includes('mock_token')) {
