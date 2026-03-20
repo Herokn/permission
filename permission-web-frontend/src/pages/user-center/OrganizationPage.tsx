@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button, Modal, Form, Input, Select, message, Popconfirm, Card, Space, Tabs, Tag, InputNumber } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, ApartmentOutlined, BuildOutlined, ApartmentOutlined as OrgIcon } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, ApartmentOutlined, BuildOutlined } from '@ant-design/icons';
 import request from '@/utils/request';
 import styles from './OrganizationPage.module.css';
 
