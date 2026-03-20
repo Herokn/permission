@@ -81,9 +81,14 @@
                 </configuration>
                 <executions>
                     <execution>
+                        <id>repackage</id>
                         <goals>
                             <goal>repackage</goal>
                         </goals>
+                        <configuration>
+                            <!-- 可执行 JAR 使用 classifier，保持原始 JAR 作为主 artifact 供依赖 -->
+                            <classifier>exec</classifier>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
