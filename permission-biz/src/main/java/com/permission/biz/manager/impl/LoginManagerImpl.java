@@ -120,9 +120,9 @@ public class LoginManagerImpl implements LoginManager {
         session.setAccessToken(accessToken);
         session.setRefreshToken(refreshToken);
         session.setExpiresAt(LocalDateTime.ofInstant(
-                java.time.Instant.ofEpochMilli(expiresAt), ZoneId.systemDefault()));
+                java.time.Instant.ofEpochMilli(expiresAt), ZoneOffset.UTC));
         session.setRefreshExpiresAt(LocalDateTime.ofInstant(
-                java.time.Instant.ofEpochMilli(refreshExpiresAt), ZoneId.systemDefault()));
+                java.time.Instant.ofEpochMilli(refreshExpiresAt), ZoneOffset.UTC));
         session.setStatus(SessionStatusEnum.ACTIVE.getCode());
         loginSessionService.save(session);
 
@@ -222,11 +222,11 @@ public class LoginManagerImpl implements LoginManager {
                 session.getUserId(), sessionId, expiresAt);
 
         loginSessionService.updateAccessToken(sessionId, newAccessToken,
-                LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(expiresAt), ZoneId.systemDefault()));
+                LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(expiresAt), ZoneOffset.UTC));
 
         session.setAccessToken(newAccessToken);
         session.setExpiresAt(LocalDateTime.ofInstant(
-                java.time.Instant.ofEpochMilli(expiresAt), ZoneId.systemDefault()));
+                java.time.Instant.ofEpochMilli(expiresAt), ZoneOffset.UTC));
         return buildLoginVO(session);
     }
 
@@ -300,7 +300,19 @@ public class LoginManagerImpl implements LoginManager {
     }
 
     private String buildSsoAuthUrl(String redirectUri) {
-        return String.format("https://sso.example.com/oauth/authorize?client_id=your-client-id&redirect_uri=%s&response_type=code",
-                redirectUri);
+        // 白名单校验，防止开放重定向攻击
+        if (!permissionConfig.isSsoRedirectAllowed(redirectUri)) {
+            log.warn("SSO回调地址不在白名单中: {}", redirectUri);
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "SSO回调地址不在允许的白名单中");
+        }
+        try {
+            // URL编码redirectUri
+            String encodedRedirectUri = java.net.URLEncoder.encode(redirectUri, "UTF-8");
+            return String.format("https://sso.example.com/oauth/authorize?client_id=your-client-id&redirect_uri=%s&response_type=code",
+                    encodedRedirectUri);
+        } catch (java.io.UnsupportedEncodingException e) {
+            log.error("URL编码失败: {}", redirectUri, e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "SSO回调地址编码失败");
+        }
     }
 }

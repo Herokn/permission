@@ -21,6 +21,7 @@ out/
 
 # Dependencies
 package-lock.json
+!permission-web-frontend/package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
@@ -47,6 +48,10 @@ temp/
 
 # Spring Boot
 spring-boot-devtools.properties
+application-local.yml
+
+# PID files
+*.pid
 
 # pnpm store
 .pnpm-store/

@@ -304,9 +304,10 @@ public class UserAuthManagerImpl implements UserAuthManager {
                     .filter(r -> CommonStatusEnum.ENABLED.getCode().equals(r.getStatus()))
                     .map(RoleDO::getId)
                     .collect(Collectors.toSet());
-            for (Long roleId : validRoleIds) {
-                List<RolePermissionDO> rps = rolePermissionService.listByRoleId(roleId);
-                rps.forEach(rp -> rolePermCodeSet.add(rp.getPermissionCode()));
+            // 批量查询角色权限，避免 N+1 问题
+            if (!validRoleIds.isEmpty()) {
+                List<RolePermissionDO> allRolePerms = rolePermissionService.listByRoleIds(new ArrayList<>(validRoleIds));
+                allRolePerms.forEach(rp -> rolePermCodeSet.add(rp.getPermissionCode()));
             }
         }
         detail.setRolePermissionCodes(new ArrayList<>(rolePermCodeSet));

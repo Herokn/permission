@@ -13,9 +13,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 鉴权缓存实现（Redis）
@@ -81,6 +80,69 @@ public class AuthzCacheServiceImpl implements AuthzCacheService {
         }
 
         return result;
+    }
+
+    @Override
+    public Map<String, AuthzResult> checkBatchWithCache(String userId, List<String> permissionCodes, String projectId) {
+        if (permissionCodes == null || permissionCodes.isEmpty()) {
+            return Map.of();
+        }
+
+        // 1. 批量构建缓存key
+        List<String> keys = permissionCodes.stream()
+                .map(code -> buildKey(userId, code, projectId))
+                .collect(Collectors.toList());
+
+        // 2. 批量从Redis获取缓存
+        List<String> cachedValues = redisTemplate.opsForValue().multiGet(keys);
+        Map<String, AuthzResult> results = new LinkedHashMap<>(permissionCodes.size());
+        Set<Integer> missedIndices = new HashSet<>();
+
+        for (int i = 0; i < permissionCodes.size(); i++) {
+            String permissionCode = permissionCodes.get(i);
+            String cached = cachedValues != null ? cachedValues.get(i) : null;
+
+            if (cached != null) {
+                if (NULL_CACHE_MARKER.equals(cached)) {
+                    results.put(permissionCode, AuthzResult.denied("缓存空值：无权限"));
+                } else {
+                    try {
+                        CacheEntry entry = objectMapper.readValue(cached, CacheEntry.class);
+                        results.put(permissionCode, entry.allowed ? AuthzResult.allowed(entry.reason) : AuthzResult.denied(entry.reason));
+                    } catch (JsonProcessingException e) {
+                        log.warn("反序列化鉴权缓存失败, userId={}, permissionCode={}", userId, permissionCode, e);
+                        missedIndices.add(i);
+                    }
+                }
+            } else {
+                missedIndices.add(i);
+            }
+        }
+
+        // 3. 对于缓存未命中的，批量调用AuthzService
+        if (!missedIndices.isEmpty()) {
+            for (int i : missedIndices) {
+                String permissionCode = permissionCodes.get(i);
+                AuthzResult result = authzService.check(userId, permissionCode, projectId);
+                results.put(permissionCode, result);
+
+                // 回填缓存
+                String key = buildKey(userId, permissionCode, projectId);
+                try {
+                    if (!result.isAllowed()) {
+                        redisTemplate.opsForValue().set(key, NULL_CACHE_MARKER, NULL_CACHE_TTL);
+                    } else {
+                        CacheEntry entry = new CacheEntry(result.isAllowed(), result.getReason());
+                        String json = objectMapper.writeValueAsString(entry);
+                        redisTemplate.opsForValue().set(key, json, CACHE_TTL);
+                    }
+                } catch (JsonProcessingException e) {
+                    log.warn("序列化鉴权缓存失败, userId={}, permissionCode={}", userId, permissionCode, e);
+                }
+            }
+        }
+
+        return results;
     }
 
     @Override

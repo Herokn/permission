@@ -27,6 +27,12 @@ jobs:
       - name: Test
         run: mvn verify -B
 
+      - name: Checkstyle
+        run: mvn checkstyle:check -B
+
+      - name: SpotBugs
+        run: mvn spotbugs:check -B || true
+
       - name: OWASP dependency check
         run: mvn -B -pl permission-bootstrap org.owasp:dependency-check-maven:10.0.4:check -DfailBuildOnCVSS=7 || true
 
@@ -60,6 +66,7 @@ jobs:
         working-directory: permission-web-frontend
         run: |
           npm ci
+          npm run lint
           npm run test
           npm run build
 

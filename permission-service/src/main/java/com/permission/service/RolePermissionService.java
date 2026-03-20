@@ -16,6 +16,11 @@ public interface RolePermissionService {
     List<RolePermissionDO> listByRoleId(Long roleId);
 
     /**
+     * 批量根据角色ID列表查询权限编码列表
+     */
+    List<RolePermissionDO> listByRoleIds(List<Long> roleIds);
+
+    /**
      * 根据权限编码统计引用数
      */
     long countByPermissionCode(String permissionCode);

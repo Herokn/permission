@@ -48,12 +48,14 @@ public class AuthzManagerImpl implements AuthzManager {
             throw new BusinessException(ErrorCode.AUTHZ_PARAM_INVALID);
         }
 
-        Map<String, Boolean> results = dto.getPermissionCodes()
-                .stream()
+        // 批量鉴权：使用批量缓存方法减少Redis IO次数
+        Map<String, AuthzResult> resultMap = authzCacheService.checkBatchWithCache(
+                dto.getUserId(), dto.getPermissionCodes(), dto.getProjectId());
+
+        Map<String, Boolean> results = dto.getPermissionCodes().stream()
                 .collect(Collectors.toMap(
                         code -> code,
-                        code -> authzCacheService.checkWithCache(
-                                dto.getUserId(), code, dto.getProjectId()).isAllowed(),
+                        code -> resultMap.getOrDefault(code, AuthzResult.denied("未知错误")).isAllowed(),
                         (v1, v2) -> v1,
                         LinkedHashMap::new
                 ));

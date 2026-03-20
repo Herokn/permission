@@ -31,6 +31,16 @@ public class RolePermissionServiceImpl implements RolePermissionService {
     }
 
     @Override
+    public List<RolePermissionDO> listByRoleIds(List<Long> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            return List.of();
+        }
+        LambdaQueryWrapper<RolePermissionDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(RolePermissionDO::getRoleId, roleIds);
+        return rolePermissionMapper.selectList(wrapper);
+    }
+
+    @Override
     public long countByPermissionCode(String permissionCode) {
         LambdaQueryWrapper<RolePermissionDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(RolePermissionDO::getPermissionCode, permissionCode);
