@@ -453,6 +453,7 @@ INSERT INTO role (code, name, role_scope, role_domain, project_id, status, descr
 ('USER_CENTER_ADMIN', '用户管理员', 'PROJECT', 'APP', 'UC', 'ENABLED', '用户中心内用户/组织/岗位的管理权限（一颗角色覆盖三类菜单）'),
 ('USER_VIEWER', '用户查看员', 'PROJECT', 'APP', 'UC', 'ENABLED', '仅查看用户信息，无编辑权限'),
 ('USER_ORG_MANAGER', '组织管理员', 'PROJECT', 'APP', 'UC', 'ENABLED', '可查看用户；可查看并管理组织'),
+('ORG_ADMIN', '组织管理员', 'GLOBAL', 'APP', NULL, 'ENABLED', '可查看用户；可查看并管理组织'),
 ('PERM_CENTER_ADMIN', '权限管理员', 'PROJECT', 'PERM_CENTER', 'PC', 'ENABLED', '权限中心内角色、权限点、用户授权等管理能力'),
 ('NORMAL_USER', '普通用户', 'PROJECT', 'APP', 'UC', 'ENABLED', '普通用户，仅有基本查看权限');
 
@@ -634,7 +635,8 @@ INSERT INTO org_position (org_id, position_id) VALUES
 -- 系统管理员仅通过 application 配置账号登录（auth.users），不在业务用户表中展示。
 -- 以下为演示业务用户（密码均为 BCrypt: demo123），登录账号 demo_user / 密码 demo123，默认无角色（登录后无业务权限）。
 INSERT INTO user (user_id, login_account, password_hash, user_type, display_name, full_name, mobile, email, status, primary_org_id, position_id, employee_no) VALUES
-('u_demo001', 'demo_user', '$2b$10$ZXUZto5ds7XRwKfRuSwPJ.pz/SyuiBwxL.aVEMMmvtfl19GiXZVCu', 0, '演示用户', '演示用户', '13900000001', 'demo@example.com', 1, 1, 1, 'D001');
+('u_demo001', 'demo_user', '$2b$10$ZXUZto5ds7XRwKfRuSwPJ.pz/SyuiBwxL.aVEMMmvtfl19GiXZVCu', 0, '演示用户', '演示用户', '13900000001', 'demo@example.com', 1, 1, 1, 'D001'),
+('u_59c4e0d9abc1', 'user', '$2a$10$5Vislpvc4em4TrRZxfYsNut/rJNhCH0uIXw/CrxNTQS/um0m15/XW', 0, '测试用户', '测试用户', '13247097050', '925073484@sfsu.edu', 1, 1, 13, NULL);
 
 -- =============================================
 -- 第九部分：用户组织关系
@@ -649,6 +651,22 @@ INSERT INTO user_org_rel (user_id, org_id, is_primary, position_id, employee_no)
 -- 配置登录超级管理员：JWT 业务 userId=sys_admin（无 user 表记录；见 application 中 auth.users）
 INSERT INTO user_role (user_id, role_id, project_id)
 SELECT 'sys_admin', id, NULL FROM role WHERE code = 'SUPER_ADMIN';
+
+-- 配置测试用户角色：组织管理员 + 普通用户
+INSERT INTO user_role (user_id, role_id, project_id)
+SELECT 'u_59c4e0d9abc1', id, NULL FROM role WHERE code = 'USER_ORG_MANAGER';
+INSERT INTO user_role (user_id, role_id, project_id)
+SELECT 'u_59c4e0d9abc1', id, NULL FROM role WHERE code = 'NORMAL_USER';
+
+-- =============================================
+-- 第十一部分：用户直接权限（测试用户）
+-- =============================================
+
+-- 配置测试用户的直接权限（用于测试用户管理功能）
+INSERT INTO user_permission (user_id, permission_code, effect, project_id) VALUES
+('u_59c4e0d9abc1', 'USER_LIST', 'ALLOW', 'UC'),
+('u_59c4e0d9abc1', 'USER_VIEW', 'ALLOW', 'UC'),
+('u_59c4e0d9abc1', 'USER_EDIT', 'ALLOW', 'UC');
 
 -- =============================================
 -- 附：若旧库曾写入已废弃的 UC 细粒度码，可手工执行（空库/全新 init 勿执行）
