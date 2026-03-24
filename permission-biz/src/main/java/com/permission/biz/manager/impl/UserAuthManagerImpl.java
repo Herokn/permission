@@ -9,9 +9,21 @@ import com.permission.common.enums.RoleScopeEnum;
 import com.permission.common.exception.BusinessException;
 import com.permission.common.exception.ErrorCode;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.permission.dal.dataobject.*;
+import com.permission.dal.dataobject.PermissionDO;
+import com.permission.dal.dataobject.ProjectDO;
+import com.permission.dal.dataobject.RoleDO;
+import com.permission.dal.dataobject.RolePermissionDO;
+import com.permission.dal.dataobject.UserDO;
+import com.permission.dal.dataobject.UserPermissionDO;
+import com.permission.dal.dataobject.UserRoleDO;
 import com.permission.dal.mapper.UserMapper;
-import com.permission.service.*;
+import com.permission.service.AuthzService;
+import com.permission.service.PermissionService;
+import com.permission.service.ProjectService;
+import com.permission.service.RolePermissionService;
+import com.permission.service.RoleService;
+import com.permission.service.UserPermissionService;
+import com.permission.service.UserRoleService;
 import com.permission.service.cache.AuthzCacheService;
 import com.permission.biz.dto.userauth.AssignUserRoleDTO;
 import com.permission.biz.dto.userauth.BatchAssignRoleDTO;
@@ -306,7 +318,8 @@ public class UserAuthManagerImpl implements UserAuthManager {
                     .collect(Collectors.toSet());
             // 批量查询角色权限，避免 N+1 问题
             if (!validRoleIds.isEmpty()) {
-                List<RolePermissionDO> allRolePerms = rolePermissionService.listByRoleIds(new ArrayList<>(validRoleIds));
+                List<RolePermissionDO> allRolePerms = rolePermissionService
+                        .listByRoleIds(new ArrayList<>(validRoleIds));
                 allRolePerms.forEach(rp -> rolePermCodeSet.add(rp.getPermissionCode()));
             }
         }

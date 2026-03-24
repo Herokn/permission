@@ -169,8 +169,8 @@ public class LoginSessionServiceImpl implements LoginSessionService {
                         .set(LoginSessionDO::getStatus, status));
 
         // 2. 更新 Redis
-        if (SessionStatusEnum.REVOKED.getCode().equals(status) ||
-            SessionStatusEnum.EXPIRED.getCode().equals(status)) {
+        if (SessionStatusEnum.REVOKED.getCode().equals(status)
+                || SessionStatusEnum.EXPIRED.getCode().equals(status)) {
             // 撤销或过期，直接删除 Redis 缓存
             deleteFromRedis(sessionId);
         }
@@ -282,8 +282,8 @@ public class LoginSessionServiceImpl implements LoginSessionService {
         if (expiresAt == null) {
             return DEFAULT_REFRESH_TOKEN_TTL;
         }
-        return expiresAt.toEpochSecond(ZoneOffset.UTC) - 
-               LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
+        return expiresAt.toEpochSecond(ZoneOffset.UTC)
+                - LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
     }
 
     /**

@@ -3,14 +3,34 @@ package com.permission.service.impl;
 import com.permission.common.config.PermissionConfig;
 import com.permission.common.enums.CommonStatusEnum;
 import com.permission.common.enums.PermissionEffectEnum;
-import com.permission.dal.dataobject.*;
-import com.permission.service.*;
+import com.permission.dal.dataobject.OrganizationDO;
+import com.permission.dal.dataobject.OrgRoleDO;
+import com.permission.dal.dataobject.PermissionDO;
+import com.permission.dal.dataobject.RoleDO;
+import com.permission.dal.dataobject.RolePermissionDO;
+import com.permission.dal.dataobject.UserOrgDO;
+import com.permission.dal.dataobject.UserPermissionDO;
+import com.permission.dal.dataobject.UserRoleDO;
+import com.permission.service.AuthzService;
+import com.permission.service.OrgRoleService;
+import com.permission.service.OrganizationService;
+import com.permission.service.PermissionService;
+import com.permission.service.RolePermissionService;
+import com.permission.service.RoleService;
+import com.permission.service.UserOrgService;
+import com.permission.service.UserPermissionService;
+import com.permission.service.UserRoleService;
 import com.permission.service.model.AuthzResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -69,7 +89,8 @@ public class AuthzServiceImpl implements AuthzService {
                     .filter(r -> CommonStatusEnum.ENABLED.getCode().equals(r.getStatus()))
                     .map(RoleDO::getId)
                     .collect(Collectors.toSet());
-            Set<String> roleIdsWithPermission = rolePermissionService.listByRoleIdsAndPermissionCode(validRoleIds, permissionCode);
+            Set<String> roleIdsWithPermission = rolePermissionService
+                    .listByRoleIdsAndPermissionCode(validRoleIds, permissionCode);
             if (!roleIdsWithPermission.isEmpty()) {
                 for (UserRoleDO userRole : userRoles) {
                     if (roleIdsWithPermission.contains(String.valueOf(userRole.getRoleId()))) {
@@ -135,7 +156,8 @@ public class AuthzServiceImpl implements AuthzService {
                 .map(RoleDO::getId)
                 .collect(Collectors.toSet());
 
-        Set<String> roleIdsWithPermission = rolePermissionService.listByRoleIdsAndPermissionCode(validRoleIds, permissionCode);
+        Set<String> roleIdsWithPermission = rolePermissionService
+                .listByRoleIdsAndPermissionCode(validRoleIds, permissionCode);
 
         if (!roleIdsWithPermission.isEmpty()) {
             for (OrgRoleDO orgRole : orgRoles) {
@@ -159,7 +181,8 @@ public class AuthzServiceImpl implements AuthzService {
         collectAncestorOrgIdsInternal(orgId, allOrgIds, orgCache, 0);
     }
 
-    private void collectAncestorOrgIdsInternal(Long orgId, Set<Long> allOrgIds, Map<Long, OrganizationDO> orgCache, int depth) {
+    private void collectAncestorOrgIdsInternal(Long orgId, Set<Long> allOrgIds,
+            Map<Long, OrganizationDO> orgCache, int depth) {
         int maxDepth = permissionConfig.getOrgMaxDepth();
         
         if (orgId == null || allOrgIds.contains(orgId)) {

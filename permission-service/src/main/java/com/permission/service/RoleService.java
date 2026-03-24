@@ -35,7 +35,8 @@ public interface RoleService {
      * @param projectId 项目ID，查询该项目的角色 + 全局角色（projectId=null）
      * @return 分页结果
      */
-    IPage<RoleDO> pageWithProjectFilter(Page<RoleDO> page, String code, String name, String roleScope, String status, String projectId);
+    IPage<RoleDO> pageWithProjectFilter(Page<RoleDO> page, String code,
+            String name, String roleScope, String status, String projectId);
 
     List<RoleDO> listAll();
 

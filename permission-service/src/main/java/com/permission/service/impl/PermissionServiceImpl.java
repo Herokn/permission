@@ -75,7 +75,8 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
-    public IPage<PermissionDO> pageWithProjectFilter(Page<PermissionDO> page, String code, String name, String type, String status, String projectId) {
+    public IPage<PermissionDO> pageWithProjectFilter(Page<PermissionDO> page, String code,
+            String name, String type, String status, String projectId) {
         LambdaQueryWrapper<PermissionDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StringUtils.hasText(code), PermissionDO::getCode, code);
         wrapper.like(StringUtils.hasText(name), PermissionDO::getName, name);

@@ -7,7 +7,7 @@ import com.permission.common.exception.ErrorCode;
  * 用户上下文持有者
  * 使用 ThreadLocal 在请求范围内传递用户信息
  */
-public class UserContextHolder {
+public final class UserContextHolder {
 
     private UserContextHolder() {
         throw new UnsupportedOperationException("Utility class");

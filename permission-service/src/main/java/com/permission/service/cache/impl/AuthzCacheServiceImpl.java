@@ -11,9 +11,12 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.time.Duration;
-import java.util.*;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -108,7 +111,9 @@ public class AuthzCacheServiceImpl implements AuthzCacheService {
                 } else {
                     try {
                         CacheEntry entry = objectMapper.readValue(cached, CacheEntry.class);
-                        results.put(permissionCode, entry.allowed ? AuthzResult.allowed(entry.reason) : AuthzResult.denied(entry.reason));
+                        results.put(permissionCode,
+                                entry.allowed ? AuthzResult.allowed(entry.reason)
+                                        : AuthzResult.denied(entry.reason));
                     } catch (JsonProcessingException e) {
                         log.warn("反序列化鉴权缓存失败, userId={}, permissionCode={}", userId, permissionCode, e);
                         missedIndices.add(i);
@@ -211,14 +216,22 @@ public class AuthzCacheServiceImpl implements AuthzCacheService {
     }
 
     private static class CacheEntry {
-        public boolean allowed;
-        public String reason;
+        private boolean allowed;
+        private String reason;
 
-        public CacheEntry() {}
+        CacheEntry() { }
 
-        public CacheEntry(boolean allowed, String reason) {
+        CacheEntry(boolean allowed, String reason) {
             this.allowed = allowed;
             this.reason = reason;
+        }
+
+        public boolean isAllowed() {
+            return allowed;
+        }
+
+        public String getReason() {
+            return reason;
         }
     }
 }

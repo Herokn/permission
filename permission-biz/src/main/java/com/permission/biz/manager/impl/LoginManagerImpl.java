@@ -28,6 +28,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.ZoneOffset;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -308,7 +310,9 @@ public class LoginManagerImpl implements LoginManager {
         try {
             // URL编码redirectUri
             String encodedRedirectUri = java.net.URLEncoder.encode(redirectUri, "UTF-8");
-            return String.format("https://sso.example.com/oauth/authorize?client_id=your-client-id&redirect_uri=%s&response_type=code",
+            return String.format(
+                    "https://sso.example.com/oauth/authorize?client_id=your-client-id"
+                            + "&redirect_uri=%s&response_type=code",
                     encodedRedirectUri);
         } catch (java.io.UnsupportedEncodingException e) {
             log.error("URL编码失败: {}", redirectUri, e);

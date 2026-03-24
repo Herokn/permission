@@ -12,7 +12,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -63,7 +69,8 @@ public class PermissionController {
             @RequestParam(required = false) Integer pageSize) {
         // 如果传了 projectId，使用项目隔离查询
         if (projectId != null && !projectId.isEmpty()) {
-            return ApiResponse.success(permissionManager.listPermissionsWithProjectFilter(code, name, type, status, projectId, pageNum, pageSize));
+            return ApiResponse.success(permissionManager.listPermissionsWithProjectFilter(
+                    code, name, type, status, projectId, pageNum, pageSize));
         }
         return ApiResponse.success(permissionManager.listPermissions(code, name, type, status, pageNum, pageSize));
     }

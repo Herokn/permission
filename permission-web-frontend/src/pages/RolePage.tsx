@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Table,
   Button,
@@ -11,9 +11,12 @@ import {
   Tag,
   Card,
   Select,
+  Tree,
+  Radio,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SettingOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SettingOutlined, ReloadOutlined, UnorderedListOutlined, ApartmentOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import type { DataNode, TreeProps } from 'antd/es/tree';
 import {
   listRoles,
   createRole,
@@ -40,6 +43,7 @@ const RolePage: React.FC = () => {
   const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
   const [selectedPermissionCodes, setSelectedPermissionCodes] = useState<string[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [permissionViewMode, setPermissionViewMode] = useState<'list' | 'tree'>('list');
   const [form] = Form.useForm();
 
   // 加载角色列表
@@ -289,7 +293,6 @@ const RolePage: React.FC = () => {
     },
   ];
 
-  // 权限点表格列（用于权限配置弹窗）
   const permissionColumns: ColumnsType<Permission> = [
     {
       title: '权限编码',
@@ -335,6 +338,66 @@ const RolePage: React.FC = () => {
       Table.SELECTION_INVERT,
       Table.SELECTION_NONE,
     ],
+  };
+
+  const buildPermissionTree = useMemo((): DataNode[] => {
+    const systemMap = new Map<string, DataNode>();
+    const pageMap = new Map<string, DataNode>();
+    
+    allPermissions.forEach(perm => {
+      const systemCode = perm.systemCode || 'OTHER';
+      if (!systemMap.has(systemCode)) {
+        systemMap.set(systemCode, {
+          key: `system_${systemCode}`,
+          title: systemCode,
+          children: [],
+        });
+      }
+    });
+    
+    allPermissions.forEach(perm => {
+      if (perm.type === 'PAGE') {
+        const pageNode: DataNode = {
+          key: perm.code,
+          title: `${perm.name} (${perm.code})`,
+          children: [],
+        };
+        pageMap.set(perm.code, pageNode);
+        
+        const systemCode = perm.systemCode || 'OTHER';
+        const system = systemMap.get(systemCode);
+        if (system && system.children) {
+          system.children.push(pageNode);
+        }
+      }
+    });
+    
+    allPermissions.forEach(perm => {
+      if (perm.type === 'ACTION' && perm.parentCode) {
+        const page = pageMap.get(perm.parentCode);
+        if (page && page.children) {
+          page.children.push({
+            key: perm.code,
+            title: `${perm.name} (${perm.code})`,
+          });
+        } else {
+          const systemCode = perm.systemCode || 'OTHER';
+          const system = systemMap.get(systemCode);
+          if (system && system.children) {
+            system.children.push({
+              key: perm.code,
+              title: `${perm.name} (${perm.code})`,
+            });
+          }
+        }
+      }
+    });
+    
+    return Array.from(systemMap.values()).filter(node => node.children && node.children.length > 0);
+  }, [allPermissions]);
+
+  const handleTreeCheck: TreeProps['onCheck'] = (checkedKeys) => {
+    setSelectedPermissionCodes(checkedKeys as string[]);
   };
 
   return (
@@ -453,21 +516,46 @@ const RolePage: React.FC = () => {
         open={permissionModalVisible}
         onCancel={() => setPermissionModalVisible(false)}
         onOk={handleSavePermissions}
-        width={800}
+        width={permissionViewMode === 'list' ? 800 : 600}
         className={styles.permissionModal}
       >
-        <div className={styles.permissionTip}>
-          已选择 <span className={styles.selectedCount}>{selectedPermissionCodes.length}</span> 个权限
+        <div className={styles.permissionHeader}>
+          <div className={styles.permissionTip}>
+            已选择 <span className={styles.selectedCount}>{selectedPermissionCodes.length}</span> 个权限
+          </div>
+          <Radio.Group
+            value={permissionViewMode}
+            onChange={(e) => setPermissionViewMode(e.target.value)}
+            optionType="button"
+            buttonStyle="solid"
+            size="small"
+          >
+            <Radio.Button value="list"><UnorderedListOutlined /> 列表</Radio.Button>
+            <Radio.Button value="tree"><ApartmentOutlined /> 树形</Radio.Button>
+          </Radio.Group>
         </div>
-        <Table
-          columns={permissionColumns}
-          dataSource={allPermissions}
-          rowKey="code"
-          rowSelection={rowSelection}
-          size="small"
-          pagination={{ pageSize: 10 }}
-          className={styles.permissionTable}
-        />
+        {permissionViewMode === 'list' ? (
+          <Table
+            columns={permissionColumns}
+            dataSource={allPermissions}
+            rowKey="code"
+            rowSelection={rowSelection}
+            size="small"
+            pagination={{ pageSize: 10 }}
+            className={styles.permissionTable}
+          />
+        ) : (
+          <div className={styles.permissionTreeContainer}>
+            <Tree
+              checkable
+              checkedKeys={selectedPermissionCodes}
+              onCheck={handleTreeCheck}
+              treeData={buildPermissionTree}
+              defaultExpandAll
+              style={{ padding: '12px 0' }}
+            />
+          </div>
+        )}
       </Modal>
     </Card>
   );

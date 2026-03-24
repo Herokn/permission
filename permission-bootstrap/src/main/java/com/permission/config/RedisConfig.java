@@ -34,7 +34,8 @@ public class RedisConfig {
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
         // 使用 Jackson 序列化
-        Jackson2JsonRedisSerializer<Object> jsonSerializer = new Jackson2JsonRedisSerializer<>(objectMapper, Object.class);
+        Jackson2JsonRedisSerializer<Object> jsonSerializer =
+                new Jackson2JsonRedisSerializer<>(objectMapper, Object.class);
         StringRedisSerializer stringSerializer = new StringRedisSerializer();
 
         // Key 使用 String 序列化

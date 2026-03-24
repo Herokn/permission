@@ -5,7 +5,7 @@ import {
   Space,
   Input,
   message,
-  Popconfirm,
+  Modal,
   Tag,
   Card,
   Select,
@@ -18,18 +18,17 @@ import {
   SafetyOutlined, 
   UserOutlined,
   ReloadOutlined,
-  FolderOutlined,
   CrownOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import {
   getUserAuthDetailByLoginAccount,
   assignUserRole,
   revokeUserRole,
-  grantUserPermission,
-  revokeUserPermission,
   listAllRoles,
   listAllPermissions,
   listAllProjects,
+  getRole,
 } from '@/services/api';
 import type { 
   UserRole, 
@@ -60,6 +59,7 @@ function normalizeRoleFromApi(raw: Role & AnyRec): Role {
     roleScope: (raw.roleScope ?? raw.role_scope) as string | undefined,
     roleDomain: (raw.roleDomain ?? raw.role_domain) as string | undefined,
     projectId: (raw.projectId ?? raw.project_id) as string | undefined,
+    permissionCodes: (raw.permissionCodes ?? raw.permission_codes) as string[] | undefined,
   };
 }
 
@@ -106,9 +106,47 @@ const UserGrantPage: React.FC = () => {
   /** 后端返回：当前用户所有启用角色下的权限点并集（与左侧角色关联） */
   const [userRolePermissionCodes, setUserRolePermissionCodes] = useState<string[]>([]);
   
+  // 所有权限（不限项目，用于角色预览）
+  const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
+  
   // 已选中的角色和权限
   const [, setSelectedRoleIds] = useState<number[]>([]);
-  const [selectedPermissionCodes, setSelectedPermissionCodes] = useState<string[]>([]);
+  
+  // 预览选中的角色（用于查看角色权限，只读模式）
+  const [previewRole, setPreviewRole] = useState<Role | null>(null);
+
+  // 加载所有权限（用于角色预览）
+  useEffect(() => {
+    const loadAllPerms = async () => {
+      try {
+        const res = await listAllPermissions();
+        setAllPermissions(res.data || []);
+      } catch {
+        // ignore
+      }
+    };
+    loadAllPerms();
+  }, []);
+
+  // 处理角色预览（点击角色时调用详情接口获取权限码）
+  const handlePreviewRole = async (role: Role | null) => {
+    if (role === null) {
+      setPreviewRole(null);
+      return;
+    }
+    if (previewRole?.id === role.id) {
+      setPreviewRole(null);
+      return;
+    }
+    try {
+      const res = await getRole(role.id);
+      const normalized = normalizeRoleFromApi(res.data as Role & AnyRec);
+      setPreviewRole(normalized);
+    } catch (error) {
+      message.error('获取角色权限失败');
+      setPreviewRole(role);
+    }
+  };
 
   // 加载项目列表（接口仅返回启用项目；若 URL 里带了已停用项目编码则清空）
   useEffect(() => {
@@ -156,17 +194,38 @@ const UserGrantPage: React.FC = () => {
     loadProjectData();
   }, [selectedProjectId]);
 
-  // 构建权限树
-  const permissionTree = useMemo(() => {
-    if (!projectPermissions.length) return [];
+  /** 是否处于角色预览模式 */
+  const isPreviewMode = previewRole !== null;
 
-    // 构建 MENU -> PAGE -> ACTION 三层树
-    const menuMap = new Map<string, PermissionTreeNode>();
+  /** 预览角色的权限码列表（不过滤，直接使用角色的所有权限码） */
+  const previewRolePermissionCodes = useMemo(() => {
+    if (!previewRole || !previewRole.permissionCodes) return [];
+    return previewRole.permissionCodes;
+  }, [previewRole]);
+
+  // 构建权限树（预览模式用所有权限且只显示USER_CENTER相关，否则用当前项目权限）
+  const permissionTree = useMemo(() => {
+    let perms = isPreviewMode ? allPermissions : projectPermissions;
+    if (!perms.length) return [];
+
+    // 预览模式下：获取用户中心相关的权限点
+    // ACTION 的 systemCode 是 USER_CENTER，PAGE 的 systemCode 是 UC_USER/UC_ORG/UC_POSITION
+    if (isPreviewMode) {
+      // 获取所有 USER_CENTER 的 ACTION
+      const userCenterActions = perms.filter(p => p.systemCode === 'USER_CENTER' && p.type === 'ACTION');
+      // 获取这些 ACTION 的 parentCode 对应的所有 PAGE（不限 systemCode）
+      const parentCodes = new Set(userCenterActions.map(a => a.parentCode).filter(Boolean));
+      const relatedPages = perms.filter(p => parentCodes.has(p.code) && p.type === 'PAGE');
+      // 合并
+      perms = [...userCenterActions, ...relatedPages];
+    }
+
+    // 构建 PAGE -> ACTION 二层树（用户中心结构）
     const pageMap = new Map<string, PermissionTreeNode>();
     const actionMap = new Map<string, PermissionTreeNode>();
 
     // 先分类
-    projectPermissions.forEach(perm => {
+    perms.forEach(perm => {
       const node: PermissionTreeNode = {
         key: perm.code,
         title: perm.name,
@@ -175,9 +234,7 @@ const UserGrantPage: React.FC = () => {
         permissionId: perm.id,
       };
 
-      if (perm.type === 'MENU') {
-        menuMap.set(perm.code, { ...node, children: [] });
-      } else if (perm.type === 'PAGE') {
+      if (perm.type === 'PAGE') {
         pageMap.set(perm.code, { ...node, children: [] });
       } else if (perm.type === 'ACTION') {
         actionMap.set(perm.code, node);
@@ -185,7 +242,7 @@ const UserGrantPage: React.FC = () => {
     });
 
     // ACTION 归属到 PAGE
-    projectPermissions.filter(p => p.type === 'ACTION').forEach(perm => {
+    perms.filter(p => p.type === 'ACTION').forEach(perm => {
       const actionNode = actionMap.get(perm.code);
       const pageNode = pageMap.get(perm.parentCode || '');
       if (actionNode && pageNode && pageNode.children) {
@@ -193,29 +250,41 @@ const UserGrantPage: React.FC = () => {
       }
     });
 
-    // PAGE 归属到 MENU
-    projectPermissions.filter(p => p.type === 'PAGE').forEach(perm => {
-      const pageNode = pageMap.get(perm.code);
-      const menuNode = menuMap.get(perm.parentCode || '');
-      if (pageNode && menuNode && menuNode.children) {
-        menuNode.children.push(pageNode);
-      }
-    });
+    // 预览模式下：只保留有角色权限的页面
+    if (isPreviewMode && previewRolePermissionCodes.length > 0) {
+      const rolePermSet = new Set(previewRolePermissionCodes);
+      
+      const filteredPages: PermissionTreeNode[] = [];
+      Array.from(pageMap.values()).forEach(page => {
+        // 过滤出该角色有权限的操作
+        const filteredActions = (page.children || []).filter(action => 
+          rolePermSet.has(action.code)
+        );
+        if (filteredActions.length > 0) {
+          filteredPages.push({
+            ...page,
+            children: filteredActions,
+          });
+        }
+      });
+      return filteredPages;
+    }
 
-    return Array.from(menuMap.values());
-  }, [projectPermissions]);
+    return Array.from(pageMap.values());
+  }, [isPreviewMode, allPermissions, projectPermissions, previewRolePermissionCodes]);
 
   /** 角色带来的权限点中，属于当前项目权限树内的编码（用于右侧勾选展示） */
   const roleCodesInCurrentProject = useMemo(() => {
-    const inProj = new Set(projectPermissions.map((p) => p.code));
+    // 预览模式：使用所有权限过滤
+    const permSet = isPreviewMode ? allPermissions : projectPermissions;
+    const inProj = new Set(permSet.map((p) => p.code));
     return new Set((userRolePermissionCodes || []).filter((c) => inProj.has(c)));
-  }, [projectPermissions, userRolePermissionCodes]);
+  }, [isPreviewMode, allPermissions, projectPermissions, userRolePermissionCodes]);
 
-  const hasEffectivePerm = (code: string) =>
-    selectedPermissionCodes.includes(code) || roleCodesInCurrentProject.has(code);
-
-  const isOnlyFromRole = (code: string) =>
-    roleCodesInCurrentProject.has(code) && !selectedPermissionCodes.includes(code);
+  // 勾选状态：显示用户当前拥有的权限
+  const hasEffectivePerm = (code: string) => {
+    return roleCodesInCurrentProject.has(code);
+  };
 
   /** 将接口详情写入状态；勾选同步仅认「当前项目 + ALLOW」的直接授权 */
   const mergeAuthDetailIntoState = (
@@ -234,31 +303,16 @@ const UserGrantPage: React.FC = () => {
     setResolvedDisplayName(data.displayName || '');
     setUserRoles(roles);
     setDirectPermissions(perms);
-    if (projectIdForPerms) {
-      const pNorm = projectIdForPerms.trim();
-      setSelectedPermissionCodes(
-        perms
-          .filter((p) => p.effect === 'ALLOW' && (p.projectId ?? '').trim() === pNorm)
-          .map((p) => p.permissionCode)
-      );
-      if (syncRoleCheckmarks) {
-        setSelectedRoleIds(
-          projectRoles
-            .filter((r) =>
-              roles.some(
-                (ur) => ur.roleCode === r.code && (!ur.projectId || ur.projectId === projectIdForPerms)
-              )
+    if (projectIdForPerms && syncRoleCheckmarks) {
+      setSelectedRoleIds(
+        projectRoles
+          .filter((r) =>
+            roles.some(
+              (ur) => ur.roleCode === r.code && (!ur.projectId || ur.projectId === projectIdForPerms)
             )
-            .map((r) => r.id)
-        );
-      }
-    }
-  };
-
-  const silentReloadAuthDetail = async (account: string, projectId: string) => {
-    const res = await getUserAuthDetailByLoginAccount(account);
-    if (res.data) {
-      mergeAuthDetailIntoState(res.data, projectId, false);
+          )
+          .map((r) => r.id)
+      );
     }
   };
 
@@ -352,129 +406,22 @@ const UserGrantPage: React.FC = () => {
         projectId: record.projectId || undefined,
       });
       message.success('角色已移除');
+      setPreviewRole(null);
       handleSearch();
     } catch (error) {
       message.error(error instanceof Error ? error.message : '移除失败');
     }
   };
 
-  // 模块勾选变化（整模块授权/取消）
-  const handleModuleCheck = (menuCode: string, checked: boolean) => {
-    const menuNode = permissionTree.find((n) => n.code === menuCode);
-    if (!menuNode || !resolvedUserId || !selectedProjectId) return;
-    const acc = loginAccount.trim();
-    if (!acc) return;
-
-    const allCodes: string[] = [];
-    menuNode.children?.forEach((page) => {
-      allCodes.push(page.code);
-      page.children?.forEach((action) => {
-        allCodes.push(action.code);
-      });
+  // 带确认的移除角色
+  const confirmRemoveRole = (record: UserRole) => {
+    Modal.confirm({
+      title: '确认移除',
+      content: `确定要移除角色「${record.roleName}」吗？`,
+      okText: '确定',
+      cancelText: '取消',
+      onOk: () => handleRemoveRole(record),
     });
-
-    void (async () => {
-      try {
-        if (checked) {
-          for (const code of allCodes) {
-            await grantUserPermission({
-              userId: resolvedUserId,
-              permissionCode: code,
-              effect: 'ALLOW',
-              projectId: selectedProjectId,
-            });
-          }
-          message.success('权限授予成功');
-        } else {
-          for (const code of allCodes) {
-            await revokeUserPermission({
-              userId: resolvedUserId,
-              permissionCode: code,
-              effect: 'ALLOW',
-              projectId: selectedProjectId,
-            });
-          }
-          setSelectedPermissionCodes((prev) => prev.filter((c) => !allCodes.includes(c)));
-          message.success('权限已移除');
-        }
-        await silentReloadAuthDetail(acc, selectedProjectId);
-      } catch (error) {
-        message.error(error instanceof Error ? error.message : '操作失败');
-      }
-    })();
-  };
-
-  // 单个权限勾选
-  const handlePermissionCheck = (permissionCode: string, checked: boolean) => {
-    if (!resolvedUserId || !selectedProjectId) return;
-    const acc = loginAccount.trim();
-    if (!acc) return;
-    void (async () => {
-      try {
-        if (checked) {
-          await grantUserPermission({
-            userId: resolvedUserId,
-            permissionCode,
-            effect: 'ALLOW',
-            projectId: selectedProjectId,
-          });
-          message.success('权限授予成功');
-        } else {
-          await revokeUserPermission({
-            userId: resolvedUserId,
-            permissionCode,
-            effect: 'ALLOW',
-            projectId: selectedProjectId,
-          });
-          setSelectedPermissionCodes((prev) => prev.filter((c) => c !== permissionCode));
-          message.success('权限已移除');
-        }
-        await silentReloadAuthDetail(acc, selectedProjectId);
-      } catch (error) {
-        message.error(error instanceof Error ? error.message : '操作失败');
-      }
-    })();
-  };
-
-  /** 页面节点 + 其下所有操作，一并授权/撤销 */
-  const handlePageTreeCheck = (
-    pageNode: PermissionTreeNode,
-    actionCodes: string[],
-    checked: boolean
-  ) => {
-    if (!resolvedUserId || !selectedProjectId) return;
-    const acc = loginAccount.trim();
-    if (!acc) return;
-    const codes = [pageNode.code, ...actionCodes];
-    void (async () => {
-      try {
-        if (checked) {
-          for (const code of codes) {
-            await grantUserPermission({
-              userId: resolvedUserId,
-              permissionCode: code,
-              effect: 'ALLOW',
-              projectId: selectedProjectId,
-            });
-          }
-          message.success('权限授予成功');
-        } else {
-          for (const code of codes) {
-            await revokeUserPermission({
-              userId: resolvedUserId,
-              permissionCode: code,
-              effect: 'ALLOW',
-              projectId: selectedProjectId,
-            });
-          }
-          setSelectedPermissionCodes((prev) => prev.filter((c) => !codes.includes(c)));
-          message.success('权限已移除');
-        }
-        await silentReloadAuthDetail(acc, selectedProjectId);
-      } catch (error) {
-        message.error(error instanceof Error ? error.message : '操作失败');
-      }
-    })();
   };
 
   return (
@@ -496,7 +443,7 @@ const UserGrantPage: React.FC = () => {
             onChange={(value) => {
               setSelectedProjectId(value);
               setSelectedRoleIds([]);
-              setSelectedPermissionCodes([]);
+              setPreviewRole(null);
             }}
             style={{ width: 200 }}
             allowClear
@@ -564,40 +511,46 @@ const UserGrantPage: React.FC = () => {
               )
               .map((role) => {
               const isAssigned = currentProjectUserRoles.some((ur) => ur.roleCode === role.code);
+              const isSelected = previewRole?.id === role.id;
               return (
                 <div
                   key={role.id}
+                  className={`${styles.roleItem} ${isSelected ? styles.roleItemSelected : ''}`}
                   style={{
                     padding: '12px',
                     marginBottom: 8,
                     borderRadius: 8,
-                    border: '1px solid #faad14',
+                    border: isSelected ? '2px solid #722ed1' : '1px solid #faad14',
                     background: isAssigned ? '#fffbe6' : '#fff',
+                    cursor: 'pointer',
                   }}
+                  onClick={() => handlePreviewRole(isSelected ? null : role)}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <Tag color="gold" icon={<CrownOutlined />}>
                         项目管理员
                       </Tag>
-                      <div style={{ fontWeight: 500, marginTop: 4 }}>{role.name}</div>
+                      <div style={{ fontWeight: 500, marginTop: 4 }}>
+                        {role.name}
+                        {isSelected && <EyeOutlined style={{ marginLeft: 8, color: '#722ed1' }} />}
+                      </div>
                     </div>
-                    {isAssigned ? (
-                      <Popconfirm
-                        title="确定要移除该角色吗？"
-                        onConfirm={() =>
-                          handleRemoveRole(currentProjectUserRoles.find((ur) => ur.roleCode === role.code)!)
+                    <Button
+                      size="small"
+                      danger={isAssigned}
+                      type={isAssigned ? undefined : 'primary'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isAssigned) {
+                          confirmRemoveRole(currentProjectUserRoles.find((ur) => ur.roleCode === role.code)!);
+                        } else {
+                          handleAssignRole(role);
                         }
-                      >
-                        <Button size="small" danger>
-                          移除
-                        </Button>
-                      </Popconfirm>
-                    ) : (
-                      <Button type="primary" size="small" onClick={() => handleAssignRole(role)}>
-                        分配
-                      </Button>
-                    )}
+                      }}
+                    >
+                      {isAssigned ? '移除' : '分配'}
+                    </Button>
                   </div>
                 </div>
               );
@@ -613,36 +566,43 @@ const UserGrantPage: React.FC = () => {
               .filter((r) => r.roleScope === 'PROJECT' && !r.code.endsWith('_ADMIN'))
               .map((role) => {
                 const isAssigned = currentProjectUserRoles.some((ur) => ur.roleCode === role.code);
+                const isSelected = previewRole?.id === role.id;
                 return (
                   <div
                     key={role.id}
+                    className={`${styles.roleItem} ${isSelected ? styles.roleItemSelected : ''}`}
                     style={{
                       padding: '8px 12px',
                       marginBottom: 4,
                       borderRadius: 4,
-                      background: isAssigned ? '#f6ffed' : '#fafafa',
+                      background: isSelected ? '#f9f0ff' : (isAssigned ? '#f6ffed' : '#fafafa'),
+                      border: isSelected ? '2px solid #722ed1' : '1px solid transparent',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
+                      cursor: 'pointer',
                     }}
+                    onClick={() => handlePreviewRole(isSelected ? null : role)}
                   >
-                    <span>{role.name}</span>
-                    {isAssigned ? (
-                      <Popconfirm
-                        title="确定要移除该角色吗？"
-                        onConfirm={() =>
-                          handleRemoveRole(currentProjectUserRoles.find((ur) => ur.roleCode === role.code)!)
+                    <span>
+                      {role.name}
+                      {isSelected && <EyeOutlined style={{ marginLeft: 8, color: '#722ed1' }} />}
+                    </span>
+                    <Button
+                      type="link"
+                      size="small"
+                      danger={isAssigned}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isAssigned) {
+                          confirmRemoveRole(currentProjectUserRoles.find((ur) => ur.roleCode === role.code)!);
+                        } else {
+                          handleAssignRole(role);
                         }
-                      >
-                        <Button type="link" size="small" danger>
-                          移除
-                        </Button>
-                      </Popconfirm>
-                    ) : (
-                      <Button type="link" size="small" onClick={() => handleAssignRole(role)}>
-                        分配
-                      </Button>
-                    )}
+                      }}
+                    >
+                      {isAssigned ? '移除' : '分配'}
+                    </Button>
                   </div>
                 );
               })}
@@ -658,36 +618,43 @@ const UserGrantPage: React.FC = () => {
             )}
             {projectRoles.filter((r) => r.roleScope === 'GLOBAL').map((role) => {
               const isAssigned = currentProjectUserRoles.some((ur) => ur.roleCode === role.code);
+              const isSelected = previewRole?.id === role.id;
               return (
                 <div
                   key={role.id}
+                  className={`${styles.roleItem} ${isSelected ? styles.roleItemSelected : ''}`}
                   style={{
                     padding: '8px 12px',
                     marginBottom: 4,
                     borderRadius: 4,
-                    background: isAssigned ? '#e6f7ff' : '#fafafa',
+                    background: isSelected ? '#f9f0ff' : (isAssigned ? '#e6f7ff' : '#fafafa'),
+                    border: isSelected ? '2px solid #722ed1' : '1px solid transparent',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    cursor: 'pointer',
                   }}
+                  onClick={() => handlePreviewRole(isSelected ? null : role)}
                 >
-                  <span>{role.name}</span>
-                  {isAssigned ? (
-                    <Popconfirm
-                      title="确定要移除该角色吗？"
-                      onConfirm={() =>
-                        handleRemoveRole(currentProjectUserRoles.find((ur) => ur.roleCode === role.code)!)
+                  <span>
+                    {role.name}
+                    {isSelected && <EyeOutlined style={{ marginLeft: 8, color: '#722ed1' }} />}
+                  </span>
+                  <Button
+                    type="link"
+                    size="small"
+                    danger={isAssigned}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isAssigned) {
+                        confirmRemoveRole(currentProjectUserRoles.find((ur) => ur.roleCode === role.code)!);
+                      } else {
+                        handleAssignRole(role);
                       }
-                    >
-                      <Button type="link" size="small" danger>
-                        移除
-                      </Button>
-                    </Popconfirm>
-                  ) : (
-                    <Button type="link" size="small" onClick={() => handleAssignRole(role)}>
-                      分配
-                    </Button>
-                  )}
+                    }}
+                  >
+                    {isAssigned ? '移除' : '分配'}
+                  </Button>
                 </div>
               );
             })}
@@ -697,113 +664,88 @@ const UserGrantPage: React.FC = () => {
           <Card 
             title={
               <span>
-                <SafetyOutlined style={{ marginRight: 8, color: '#52c41a' }} />
-                权限授权
+                {isPreviewMode ? (
+                  <>
+                    <EyeOutlined style={{ marginRight: 8, color: '#722ed1' }} />
+                    角色权限预览：{previewRole.name}
+                    <Button 
+                      type="link" 
+                      size="small" 
+                      onClick={() => setPreviewRole(null)}
+                      style={{ marginLeft: 8 }}
+                    >
+                      退出预览
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <SafetyOutlined style={{ marginRight: 8, color: '#52c41a' }} />
+                    权限授权
+                  </>
+                )}
               </span>
             }
             style={{ flex: 1 }}
             size="small"
           >
-            <Alert
-              type="info"
-              showIcon
-              style={{ marginBottom: 12 }}
-              message="勾选状态 = 左侧角色带来的权限 ∪ 右侧直接授权（去重展示）。仅来自角色的项不可在此取消，请调整左侧角色。"
-            />
-            {permissionTree.length === 0 ? (
-              <Empty description="该项目暂无权限配置" />
+            {isPreviewMode ? (
+              <Alert
+                type="warning"
+                showIcon
+                style={{ marginBottom: 12 }}
+                message={`当前展示角色「${previewRole.name}」包含的权限点（只读），点击左侧其他角色可切换预览。`}
+              />
+            ) : (
+              <Alert
+                type="info"
+                showIcon
+                style={{ marginBottom: 12 }}
+                message="请点击左侧角色预览该角色的权限配置。"
+              />
+            )}
+            {!isPreviewMode ? (
+              <Empty description="请点击左侧角色查看权限配置" style={{ marginTop: 40 }} />
+            ) : permissionTree.length === 0 ? (
+              <Empty description="该角色暂无用户中心权限配置" />
             ) : (
               <div className={styles.permissionTree}>
-                {permissionTree.map(menuNode => {
-                  // 计算模块下所有权限码
-                  const allMenuCodes: string[] = [];
-                  menuNode.children?.forEach(page => {
-                    allMenuCodes.push(page.code);
-                    page.children?.forEach(action => {
-                      allMenuCodes.push(action.code);
-                    });
+                {permissionTree.map(pageNode => {
+                  const allPageCodes: string[] = [pageNode.code];
+                  (pageNode.children || []).forEach(action => {
+                    allPageCodes.push(action.code);
                   });
-                  const assignedCount = allMenuCodes.filter((c) => hasEffectivePerm(c)).length;
-                  const isAllAssigned = allMenuCodes.length > 0 && assignedCount === allMenuCodes.length;
-                  const moduleOnlyFromRole =
-                    allMenuCodes.length > 0 && allMenuCodes.every((c) => isOnlyFromRole(c));
+                  const assignedCount = allPageCodes.filter((c) => hasEffectivePerm(c)).length;
+                  const isAllAssigned = allPageCodes.length > 0 && assignedCount === allPageCodes.length;
 
                   return (
-                    <div key={menuNode.code} className={styles.moduleSection}>
-                      {/* 模块头部 */}
+                    <div key={pageNode.code} className={styles.moduleSection}>
+                      {/* 页面头部 */}
                       <div className={styles.moduleHeader}>
                         <Checkbox
                           checked={isAllAssigned}
-                          indeterminate={assignedCount > 0 && assignedCount < allMenuCodes.length}
-                          disabled={moduleOnlyFromRole}
-                          onChange={(e) => handleModuleCheck(menuNode.code, e.target.checked)}
+                          indeterminate={assignedCount > 0 && assignedCount < allPageCodes.length}
+                          disabled
                         >
-                          <FolderOutlined style={{ marginRight: 8, color: '#1890ff' }} />
-                          <span style={{ fontWeight: 500 }}>{menuNode.title}</span>
+                          <span style={{ fontWeight: 500 }}>{pageNode.title}</span>
                         </Checkbox>
                         <Tag color="blue" style={{ marginLeft: 8 }}>
-                          {assignedCount}/{allMenuCodes.length}
+                          {assignedCount}/{allPageCodes.length}
                         </Tag>
                       </div>
 
-                      {/* 页面和操作 */}
+                      {/* 操作权限 */}
                       <div className={styles.moduleContent}>
-                        {menuNode.children?.map(pageNode => {
-                          const pageAssigned = hasEffectivePerm(pageNode.code);
-                          const actionAssignments = (pageNode.children || []).map(action => ({
-                            ...action,
-                            assigned: hasEffectivePerm(action.code),
-                          }));
-                          const allActionsAssigned = actionAssignments.length > 0 && 
-                            actionAssignments.every(a => a.assigned);
-                          const pageScopeCodes = [
-                            pageNode.code,
-                            ...actionAssignments.map((a) => a.code),
-                          ];
-                          const pageOnlyFromRole =
-                            pageScopeCodes.length > 0 &&
-                            pageScopeCodes.every((c) => isOnlyFromRole(c));
-
-                          return (
-                            <div key={pageNode.code} className={styles.pageSection}>
-                              <Checkbox
-                                checked={pageAssigned && allActionsAssigned}
-                                indeterminate={
-                                  (pageAssigned && !allActionsAssigned) ||
-                                  (!pageAssigned && actionAssignments.some(a => a.assigned))
-                                }
-                                disabled={pageOnlyFromRole}
-                                onChange={(e) =>
-                                  handlePageTreeCheck(
-                                    pageNode,
-                                    actionAssignments.map((a) => a.code),
-                                    e.target.checked
-                                  )
-                                }
-                              >
-                                <Tag color="cyan">页面</Tag>
-                                {pageNode.title}
-                              </Checkbox>
-
-                              {/* 操作权限 */}
-                              {actionAssignments.length > 0 && (
-                                <div className={styles.actionList}>
-                                  {actionAssignments.map(action => (
-                                    <Checkbox
-                                      key={action.code}
-                                      checked={action.assigned}
-                                      disabled={isOnlyFromRole(action.code)}
-                                      onChange={(e) => handlePermissionCheck(action.code, e.target.checked)}
-                                    >
-                                      <Tag color="orange">操作</Tag>
-                                      {action.title}
-                                    </Checkbox>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                        <div className={styles.actionList}>
+                          {pageNode.children?.map(action => (
+                            <Checkbox
+                              key={action.code}
+                              checked={hasEffectivePerm(action.code)}
+                              disabled
+                            >
+                              {action.title}
+                            </Checkbox>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   );

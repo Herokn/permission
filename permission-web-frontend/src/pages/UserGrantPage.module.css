@@ -112,3 +112,16 @@
 .actionList > label {
   margin-right: 16px;
 }
+
+/* 角色项 */
+.roleItem {
+  transition: all 0.2s ease;
+}
+
+.roleItem:hover {
+  box-shadow: 0 2px 8px rgba(114, 46, 209, 0.15);
+}
+
+.roleItemSelected {
+  box-shadow: 0 2px 8px rgba(114, 46, 209, 0.25);
+}

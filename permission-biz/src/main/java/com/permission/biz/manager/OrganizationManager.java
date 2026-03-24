@@ -4,7 +4,10 @@ import com.permission.biz.dto.organization.AssignOrgMembersDTO;
 import com.permission.biz.dto.organization.AssignOrgRolesDTO;
 import com.permission.biz.dto.organization.CreateOrganizationDTO;
 import com.permission.biz.dto.organization.UpdateOrganizationDTO;
-import com.permission.biz.vo.organization.*;
+import com.permission.biz.vo.organization.OrgMemberVO;
+import com.permission.biz.vo.organization.OrgRoleVO;
+import com.permission.biz.vo.organization.OrganizationTreeVO;
+import com.permission.biz.vo.organization.OrganizationVO;
 
 import java.util.List;
 

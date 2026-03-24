@@ -67,7 +67,8 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
-    public IPage<RoleDO> pageWithProjectFilter(Page<RoleDO> page, String code, String name, String roleScope, String status, String projectId) {
+    public IPage<RoleDO> pageWithProjectFilter(Page<RoleDO> page, String code,
+            String name, String roleScope, String status, String projectId) {
         LambdaQueryWrapper<RoleDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StringUtils.hasText(code), RoleDO::getCode, code);
         wrapper.like(StringUtils.hasText(name), RoleDO::getName, name);

@@ -61,7 +61,8 @@ public interface PermissionService {
      * @param projectId 项目ID，查询该项目的权限点 + 全局权限点（projectId=null）
      * @return 分页结果
      */
-    IPage<PermissionDO> pageWithProjectFilter(Page<PermissionDO> page, String code, String name, String type, String status, String projectId);
+    IPage<PermissionDO> pageWithProjectFilter(Page<PermissionDO> page, String code,
+            String name, String type, String status, String projectId);
 
     /**
      * 查询所有权限点

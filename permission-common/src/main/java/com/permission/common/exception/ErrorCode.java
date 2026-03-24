@@ -74,7 +74,11 @@ public enum ErrorCode {
     MOBILE_EXISTS("142403", "手机号已被使用"),
     EMAIL_EXISTS("142404", "邮箱已被使用"),
     LOGIN_ACCOUNT_EXISTS("142405", "登录账号已被使用"),
-    RESERVED_LOGIN_ACCOUNT("142406", "该登录账号为系统保留，不可使用");
+    RESERVED_LOGIN_ACCOUNT("142406", "该登录账号为系统保留，不可使用"),
+
+    // ==================== 通用错误 ====================
+    INVALID_PARAM("140001", "参数无效"),
+    SYSTEM_ERROR("140500", "系统错误");
 
     private final String code;
     private final String message;

@@ -27,7 +27,15 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -165,8 +173,8 @@ public class PermissionManagerImpl implements PermissionManager {
     }
 
     @Override
-    public PageResult<PermissionVO> listPermissionsWithProjectFilter(String code, String name, String type, String status,
-                                                                      String projectId, Integer pageNum, Integer pageSize) {
+    public PageResult<PermissionVO> listPermissionsWithProjectFilter(String code, String name,
+            String type, String status, String projectId, Integer pageNum, Integer pageSize) {
         pageNum = (pageNum == null || pageNum < 1) ? PermissionConstant.DEFAULT_PAGE_NUM : pageNum;
         pageSize = (pageSize == null || pageSize < 1) ? PermissionConstant.DEFAULT_PAGE_SIZE : pageSize;
         pageSize = Math.min(pageSize, PermissionConstant.MAX_PAGE_SIZE);

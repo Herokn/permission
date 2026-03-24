@@ -6,7 +6,7 @@ import lombok.Getter;
  * 鉴权内部结果对象（Service 层使用，不对外暴露）
  */
 @Getter
-public class AuthzResult {
+public final class AuthzResult {
 
     private final boolean allowed;
     private final String reason;

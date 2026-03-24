@@ -34,6 +34,7 @@ public class AsyncConfig implements AsyncConfigurer {
 
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
-        return (ex, method, params) -> log.error("异步任务执行异常: method={}, params={}", method.getName(), params, ex);
+        return (ex, method, params) -> log.error(
+                "异步任务执行异常: method={}, params={}", method.getName(), params, ex);
     }
 }

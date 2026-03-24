@@ -397,12 +397,9 @@ INSERT INTO `permission` (`code`, `name`, `system_code`, `type`, `parent_code`, 
 INSERT INTO `permission` (`code`, `name`, `system_code`, `project_id`, `type`, `parent_code`, `sort_order`, `status`, `description`) VALUES
 ('USER_CENTER', '用户中心', 'USER_CENTER', 'UC', 'MODULE', NULL, 100, 'ENABLED', '用户中心模块访问权限'),
 ('USER_CENTER_USER_VIEW', '查看用户', 'USER_CENTER', 'UC', 'ACTION', 'USER_LIST', 101, 'ENABLED', '查看用户列表'),
-('USER_CENTER_USER_SEARCH', '搜索用户', 'USER_CENTER', 'UC', 'ACTION', 'USER_LIST', 102, 'ENABLED', '搜索用户'),
-('USER_CENTER_USER_CREATE', '创建用户', 'USER_CENTER', 'UC', 'ACTION', 'USER_LIST', 103, 'ENABLED', '创建新用户'),
-('USER_CENTER_USER_EDIT', '编辑用户', 'USER_CENTER', 'UC', 'ACTION', 'USER_LIST', 104, 'ENABLED', '编辑用户信息'),
-('USER_CENTER_USER_DELETE', '删除用户', 'USER_CENTER', 'UC', 'ACTION', 'USER_LIST', 105, 'ENABLED', '删除用户'),
-('USER_CENTER_USER_ENABLE', '启用/禁用用户', 'USER_CENTER', 'UC', 'ACTION', 'USER_LIST', 106, 'ENABLED', '启用或禁用用户'),
-('USER_CENTER_USER_RESET_PWD', '重置密码', 'USER_CENTER', 'UC', 'ACTION', 'USER_LIST', 107, 'ENABLED', '重置用户密码'),
+('USER_CENTER_USER_CREATE', '创建用户', 'USER_CENTER', 'UC', 'ACTION', 'USER_LIST', 102, 'ENABLED', '创建新用户'),
+('USER_CENTER_USER_EDIT', '编辑用户', 'USER_CENTER', 'UC', 'ACTION', 'USER_LIST', 103, 'ENABLED', '编辑用户信息'),
+('USER_CENTER_USER_DELETE', '删除用户', 'USER_CENTER', 'UC', 'ACTION', 'USER_LIST', 104, 'ENABLED', '删除用户'),
 -- 组织与层级、岗位：与用户列表同级，每页仅四类操作（查看/新增/编辑/删除）；成员与组织角色等写操作归在「编辑组织」鉴权下
 ('USER_CENTER_ORG_VIEW', '查看组织', 'USER_CENTER', 'UC', 'ACTION', 'UC_ORG_LIST', 108, 'ENABLED', '查看组织树、详情、成员与角色列表'),
 ('USER_CENTER_ORG_CREATE', '新增组织', 'USER_CENTER', 'UC', 'ACTION', 'UC_ORG_LIST', 109, 'ENABLED', '创建组织'),
@@ -450,12 +447,9 @@ INSERT INTO role (code, name, role_scope, role_domain, project_id, status, descr
 ('SUPER_ADMIN', '超级管理员', 'GLOBAL', 'APP', NULL, 'ENABLED', '拥有所有权限的超级管理员');
 
 INSERT INTO role (code, name, role_scope, role_domain, project_id, status, description) VALUES
-('USER_CENTER_ADMIN', '用户管理员', 'PROJECT', 'APP', 'UC', 'ENABLED', '用户中心内用户/组织/岗位的管理权限（一颗角色覆盖三类菜单）'),
-('USER_VIEWER', '用户查看员', 'PROJECT', 'APP', 'UC', 'ENABLED', '仅查看用户信息，无编辑权限'),
-('USER_ORG_MANAGER', '组织管理员', 'PROJECT', 'APP', 'UC', 'ENABLED', '可查看用户；可查看并管理组织'),
-('ORG_ADMIN', '组织管理员', 'GLOBAL', 'APP', NULL, 'ENABLED', '可查看用户；可查看并管理组织'),
-('PERM_CENTER_ADMIN', '权限管理员', 'PROJECT', 'PERM_CENTER', 'PC', 'ENABLED', '权限中心内角色、权限点、用户授权等管理能力'),
-('NORMAL_USER', '普通用户', 'PROJECT', 'APP', 'UC', 'ENABLED', '普通用户，仅有基本查看权限');
+('USER_CENTER_ADMIN', '用户中心管理员', 'PROJECT', 'APP', 'UC', 'ENABLED', '用户中心内用户/组织/岗位的所有管理权限'),
+('USER_MANAGER', '用户管理员', 'PROJECT', 'APP', 'UC', 'ENABLED', '仅管理用户相关权限'),
+('USER_ORG_MANAGER', '组织管理员', 'PROJECT', 'APP', 'UC', 'ENABLED', '可查看用户；可管理组织');
 
 -- =============================================
 -- 第四部分：角色权限分配
@@ -473,22 +467,24 @@ SELECT r.id, p.code FROM role r
 CROSS JOIN (
     SELECT code FROM permission 
     WHERE code IN (
-        'USER_CENTER_USER_VIEW', 'USER_CENTER_USER_SEARCH', 'USER_CENTER_USER_CREATE', 'USER_CENTER_USER_EDIT',
-        'USER_CENTER_USER_DELETE', 'USER_CENTER_USER_ENABLE', 'USER_CENTER_USER_RESET_PWD',
-        'USER_CENTER_ORG_VIEW', 'USER_CENTER_ORG_CREATE', 'USER_CENTER_ORG_EDIT', 'USER_CENTER_ORG_DELETE',
-        'USER_CENTER_POSITION_VIEW', 'USER_CENTER_POSITION_CREATE', 'USER_CENTER_POSITION_EDIT', 'USER_CENTER_POSITION_DELETE',
+        'USER_LIST', 'USER_CENTER_USER_VIEW', 'USER_CENTER_USER_CREATE', 'USER_CENTER_USER_EDIT', 'USER_CENTER_USER_DELETE',
+        'UC_ORG_LIST', 'USER_CENTER_ORG_VIEW', 'USER_CENTER_ORG_CREATE', 'USER_CENTER_ORG_EDIT', 'USER_CENTER_ORG_DELETE',
+        'UC_POSITION_LIST', 'USER_CENTER_POSITION_VIEW', 'USER_CENTER_POSITION_CREATE', 'USER_CENTER_POSITION_EDIT', 'USER_CENTER_POSITION_DELETE',
         'SYS_USER_MANAGEMENT_ACCESS'
     )
 ) p
 WHERE r.code = 'USER_CENTER_ADMIN';
 
--- 用户查看员：仅查看用户
+-- 用户管理员：仅管理用户相关权限
 INSERT INTO role_permission (role_id, permission_code)
 SELECT r.id, p.code FROM role r
 CROSS JOIN (
-    SELECT code FROM permission WHERE code = 'USER_CENTER_USER_VIEW'
+    SELECT code FROM permission 
+    WHERE code IN (
+        'USER_LIST', 'USER_CENTER_USER_VIEW', 'USER_CENTER_USER_CREATE', 'USER_CENTER_USER_EDIT', 'USER_CENTER_USER_DELETE'
+    )
 ) p
-WHERE r.code = 'USER_VIEWER';
+WHERE r.code = 'USER_MANAGER';
 
 -- 用户组织管理员：查看用户 + 管理组织
 INSERT INTO role_permission (role_id, permission_code)
@@ -496,40 +492,11 @@ SELECT r.id, p.code FROM role r
 CROSS JOIN (
     SELECT code FROM permission 
     WHERE code IN (
-        'USER_CENTER_USER_VIEW',
-        'USER_CENTER_ORG_VIEW', 'USER_CENTER_ORG_CREATE', 'USER_CENTER_ORG_EDIT', 'USER_CENTER_ORG_DELETE'
+        'USER_LIST', 'USER_CENTER_USER_VIEW',
+        'UC_ORG_LIST', 'USER_CENTER_ORG_VIEW', 'USER_CENTER_ORG_CREATE', 'USER_CENTER_ORG_EDIT', 'USER_CENTER_ORG_DELETE'
     )
 ) p
 WHERE r.code = 'USER_ORG_MANAGER';
-
--- 权限中心管理员：权限中心相关权限
-INSERT INTO role_permission (role_id, permission_code)
-SELECT r.id, p.code FROM role r
-CROSS JOIN (
-    SELECT code FROM permission 
-    WHERE code IN (
-        'PERMISSION_CENTER_PERMISSION_VIEW', 'PERMISSION_CENTER_PERMISSION_CREATE',
-        'PERMISSION_CENTER_PERMISSION_EDIT', 'PERMISSION_CENTER_PERMISSION_DELETE',
-        'PERMISSION_CENTER_ROLE_VIEW', 'PERMISSION_CENTER_ROLE_CREATE',
-        'PERMISSION_CENTER_ROLE_EDIT', 'PERMISSION_CENTER_ROLE_DELETE', 'PERMISSION_CENTER_ROLE_ASSIGN_PERM',
-        'PERMISSION_CENTER_USER_GRANT_VIEW', 'PERMISSION_CENTER_USER_GRANT_MANAGE',
-        'PERMISSION_CENTER_AUDIT_VIEW',
-        'ROLE_VIEW', 'ROLE_CREATE', 'ROLE_UPDATE', 'ROLE_DELETE', 'ROLE_PERMISSION_ASSIGN',
-        'USER_AUTH_VIEW', 'USER_AUTH_MANAGE_ACTION',
-        'PERMISSION_CENTER_PROJECT_VIEW', 'PERMISSION_CENTER_PROJECT_CREATE',
-        'PERMISSION_CENTER_PROJECT_EDIT', 'PERMISSION_CENTER_PROJECT_DELETE'
-    )
-) p
-WHERE r.code = 'PERM_CENTER_ADMIN';
-
--- 普通用户：至少具备用户中心只读入口（否则绑定该角色后登录无任何权限点，与「基本查看」描述一致）
-INSERT INTO role_permission (role_id, permission_code)
-SELECT r.id, p.code FROM role r
-CROSS JOIN (
-    SELECT code FROM permission
-    WHERE code IN ('USER_CENTER_USER_VIEW', 'SYS_USER_MANAGEMENT_ACCESS')
-) p
-WHERE r.code = 'NORMAL_USER';
 
 -- =============================================
 -- 第五部分：组织架构数据

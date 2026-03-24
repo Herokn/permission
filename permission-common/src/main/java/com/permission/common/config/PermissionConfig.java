@@ -110,6 +110,7 @@ public class PermissionConfig {
 
     @PostConstruct
     public void logConfig() {
-        log.info("权限配置初始化: 组织最大层级深度={}, 超级管理员={}, SSO白名单={}", orgMaxDepth, superAdminSet, ssoRedirectWhitelistSet);
+        log.info("权限配置初始化: 组织最大层级深度={}, 超级管理员={}, SSO白名单={}",
+                orgMaxDepth, superAdminSet, ssoRedirectWhitelistSet);
     }
 }
