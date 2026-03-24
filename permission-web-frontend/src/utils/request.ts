@@ -149,6 +149,19 @@ const createAxiosInstance = (): AxiosInstance => {
     async (error: AxiosError<ApiResponse>) => {
       const requestUrl = error.config?.url || '';
       const isRefreshRequest = requestUrl.includes('/auth/refresh');
+      const isLoginRequest = requestUrl.includes('/auth/login');
+
+      // 登录请求失败：直接返回错误，不做任何处理
+      if (isLoginRequest) {
+        const message = error.response?.data?.message || error.message || '登录失败';
+        return Promise.reject(new Error(message));
+      }
+
+      // 403 禁止访问（如用户被禁用），直接返回错误，不做特殊处理
+      if (error.response?.status === 403) {
+        const message = error.response?.data?.message || error.message || '无权访问';
+        return Promise.reject(new Error(message));
+      }
 
       // 401 未授权，尝试静默续期
       if (error.response?.status === 401) {
